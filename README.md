@@ -1,58 +1,101 @@
 # MCP Khải Hoàn Derma
 
-Ứng dụng desktop Electron hỗ trợ tạo nội dung sản phẩm, tạo ảnh bằng ChatGPT, đồng bộ Notion và chuẩn bị bài đăng Facebook cho Khải Hoàn Derma.
+Ứng dụng desktop (Electron + Node.js) chuyên biệt cho quy trình tự động hóa nội dung sản phẩm, tạo ảnh chuẩn e-commerce bằng ChatGPT, đồng bộ cơ sở dữ liệu Notion và chuẩn bị bài đăng Facebook cho **Khải Hoàn Derma**.
 
-## Cài đặt và chạy source
+---
 
+## 🌟 Tính Năng Cốt Lõi
+
+1. **Sáng tạo nội dung Website Derma:**
+   * Tích hợp sẵn 12 danh mục sản phẩm theo chuẩn phân loại Khải Hoàn Derma.
+   * Tạo bài viết chi tiết, chuẩn SEO với OpenAI API, cho phép chỉnh sửa Markdown trực tiếp.
+   * Đồng bộ tức thì lên Notion Database với đầy đủ thuộc tính, từ khóa và trạng thái.
+
+2. **Chuẩn bị & Quản lý bài đăng Facebook:**
+   * Quản lý thư viện Prompt bài đăng Facebook có thể chỉnh sửa và lưu trực tiếp trên máy.
+   * Tự động lọc danh sách sản phẩm theo trạng thái: **Chưa đăng**, **Chờ đăng**, **Đã đăng**.
+   * Chuyển đổi trạng thái Notion sau khi xác nhận đăng bài.
+
+3. **Tự động hóa tạo ảnh ChatGPT (Chrome Debug CDP):**
+   * Kết nối trình duyệt Chrome thật qua cổng Remote Debugging (`9222` / `9223`).
+   * **Nhận diện chính xác lượt chat:** Chỉ nhận kết quả thuộc về prompt vừa gửi, tuyệt đối không lấy nhầm ảnh cũ, ảnh tham chiếu hay logo đính kèm.
+   * **Chống lưu ảnh tạm/canvas giả:** Tự động lọc bỏ hiệu ứng đang vẽ (`Creating image`), thanh tiến độ, chỉ tải ảnh hoàn chỉnh ở độ phân giải gốc khi ChatGPT đã xử lý xong.
+   * Tự động lưu 4 góc nhìn chuẩn e-commerce (`1.png` đến `4.png`) vào đúng thư mục sản phẩm:
+     * *Ảnh 1:* Cover bán hàng & Insight khách hàng.
+     * *Ảnh 2:* Infographic thành phần & hoạt chất.
+     * *Ảnh 3:* Infographic công dụng & lợi ích.
+     * *Ảnh 4:* Infographic hướng dẫn sử dụng / Routine.
+
+4. **Tích hợp Google Drive & Logo thương hiệu:**
+   * Tự động nhận diện thư mục sản phẩm theo mã `SP` trên máy và Google Drive for Desktop.
+   * Tải và gắn logo Khải Hoàn Derma chuẩn xác lên ảnh sản phẩm theo tỷ lệ thẩm mỹ.
+
+5. **Bảo mật & Ổn định (Security-First):**
+   * Toàn bộ API Key (OpenAI, Notion, Google Drive) được mã hóa an toàn bằng **Electron SafeStorage** (Windows DPAPI).
+   * **Cơ chế phục hồi linh hoạt:** Khi chuyển đổi máy tính hoặc người dùng, ứng dụng tự động xử lý an toàn mà không bị crash hay văng lỗi giải mã.
+
+---
+
+## 🚀 Cài Đặt & Chạy Từ Source
+
+### Yêu cầu môi trường
+* Node.js: `>= 18.x` (khuyến nghị 20+ hoặc 22.x).
+* Google Chrome: phiên bản mới nhất.
+
+### Các lệnh thực thi
 ```bash
+# 1. Cài đặt dependencies chuẩn xác
 npm ci
+
+# 2. Chạy ứng dụng ở chế độ phát triển
 npm start
+
+# 3. Chạy toàn bộ kiểm thử tự động (120 test cases)
+npm test
+
+# 4. Tạo lại bộ icon ứng dụng từ ảnh gốc
+npm run icons
 ```
 
-## Cấu hình lần đầu trên từng máy
+---
 
-1. Nhập **OpenAI API Key** và **Notion API Key** trong ứng dụng, sau đó lưu.
-2. Chọn thư mục gốc ảnh đã đồng bộ bằng Google Drive for Desktop.
-3. Với ChatGPT: bấm **Mở Chrome đăng nhập** để đăng nhập thủ công trong profile của tool, chưa có kết nối tự động hóa.
-4. Đăng nhập xong, đóng các cửa sổ của profile đó (không đăng xuất), rồi bấm **Kết nối Chrome Debug**. Những lần sau có thể kết nối Debug trực tiếp.
-5. Nếu trang còn tải, khi ô nhập ChatGPT xuất hiện hãy bấm **Kiểm tra và khóa tab**. Chỉ trạng thái **ChatGPT: Sẵn sàng** mới cho phép sinh ảnh.
-6. Với Facebook: mở Facebook Debug và đăng nhập như trước.
+## ⚙️ Hướng Dẫn Cấu Hình Lần Đầu
 
-Khi nâng cấp từ bản cũ, đóng Chrome Debug cũ trước khi mở bước đăng nhập thủ công. Không cần xóa profile, cookie hoặc API key. Tool không tự mở tab thay thế khi ChatGPT chuyển sang trang đăng nhập và không tự xử lý xác minh Cloudflare; bước xác minh cần do người dùng thực hiện.
+1. **Khóa API & Lưu trữ:**
+   * Nhập **OpenAI API Key** và **Notion Access Token** tại khu vực *Cấu hình hệ thống*.
+   * Dán đường dẫn thư mục đồng bộ Google Drive cục bộ (ví dụ: `G:\My Drive\Brief Khải Hoàn Derma\Ảnh đăng WEB`).
+   * Bấm **Lưu API Keys trên máy này**.
 
-Các khóa chỉ được lưu trong cấu hình cục bộ của máy, không được đưa vào Git hay bản phát hành.
+2. **Thiết lập kết nối ChatGPT:**
+   * Bấm **1. Mở Chrome đăng nhập** để mở cửa sổ Chrome riêng biệt của công cụ.
+   * Đăng nhập tài khoản ChatGPT của bạn bình thường (hoàn tất xác minh Cloudflare nếu có).
+   * Đóng cửa sổ Chrome đó lại (không đăng xuất).
+   * Bấm **2. Kết nối Chrome Debug** để công cụ bắt đầu điều khiển tự động.
+   * Khi tab ChatGPT tải xong ô nhập văn bản, bấm **Kiểm tra và khóa tab** cho đến khi trạng thái chuyển sang **ChatGPT: Sẵn sàng**.
 
-## Nhận và lưu ảnh ChatGPT
+3. **Kết nối Facebook:**
+   * Mở kết nối Facebook Debug và đăng nhập Fanpage Khải Hoàn Derma để sẵn sàng soạn thảo.
 
-Mỗi lần bấm sinh ảnh chỉ gửi một prompt. Tool ghi nhận cuộc hội thoại và các lượt cũ trước khi gửi, xác minh đúng nội dung prompt mới, rồi chỉ lấy ảnh ở câu trả lời tiếp theo. Ảnh được lưu thành `1.png`–`4.png` trong thư mục sản phẩm đã chọn; không tự chạy prompt kế tiếp.
+---
 
-Bộ nhận diện hỗ trợ dấu nhận diện lượt chat, nhãn người nói và khung ảnh có nút chỉnh sửa/tải xuống/chia sẻ khi bố cục không còn dấu cũ. Ảnh mẫu, logo, kết quả cũ và ảnh đang xử lý không được coi là kết quả mới. Nếu chuyển cuộc hội thoại, tải lại trang hoặc gửi thêm prompt trong lúc chờ, tool dừng thay vì lưu nhầm. Trước khi ghi file, tool kiểm tra lại lượt trả lời; file tạm được đổi tên sau khi xác minh xong để bảo toàn ảnh đã có.
+## 📦 Đóng Gói Bộ Cài Đặt (Build Installers)
 
-Nhật ký phân biệt: chưa nhận diện prompt đã gửi, đã khóa prompt và chờ ảnh, hoặc đã tìm thấy ảnh và đang lưu. Giao diện ChatGPT có thể thay đổi; kiểm thử mô phỏng không thay thế kiểm tra trên tài khoản/máy thực tế.
-
-Từ v1.2.22, tool nhận diện cả bố cục ChatGPT mới dùng tiêu đề `h4`, mã tin nhắn tìm kiếm và khối `display: contents`. Một khối tìm kiếm có thể chứa cả prompt lẫn câu trả lời; tool tách riêng từng người nói, không lấy ảnh đính kèm làm kết quả. Đã kiểm chứng nhận và lưu một ảnh kết quả thật ở độ phân giải nguồn trên Windows, cùng kiểm thử tự động lưu `1.png`–`4.png`. macOS dùng cùng logic nhưng vẫn cần kiểm tra trên tài khoản/máy thực tế.
-
-v1.2.23 sửa thêm lỗi nhận canvas hiệu ứng đang tạo ảnh là kết quả. Tool không tải canvas hoặc chụp khung chờ; chỉ nhận ảnh đã tải với nút chỉnh sửa/chia sẻ/tải xuống của ảnh hoàn chỉnh. Khi còn nút Dừng, trạng thái Creating image hoặc thanh tiến độ, tool tiếp tục chờ kể cả đã có ảnh xem trước. Trước khi ghi file, tool kiểm tra lại trạng thái và nguồn ảnh; PNG hoàn toàn trong suốt bị từ chối, file đã có được giữ nguyên nếu xác minh thất bại. Kiểm thử API bao gồm khung Creating image 31%: chưa ghi file, chưa báo thành công; sau khi thay bằng ảnh hoàn chỉnh mới lưu theo số prompt.
-
-URL được ChatGPT cập nhật sau khi gửi không còn tự động bị coi là đổi cuộc trò chuyện: tool đối chiếu danh tính tin nhắn (message ID hoặc phần tử prompt đã khóa) trong đúng tab trước khi tiếp tục. Trùng nội dung prompt hoặc trùng số thứ tự lượt chat không đủ để chấp nhận một cuộc hội thoại khác. Tải lại trang hay thay nội dung cuộc hội thoại vẫn bị chặn.
-
-## Build
-
-### Giao diện v1.2.24
-
-Danh mục sản phẩm có sẵn 12 lựa chọn theo website Derma. Giao diện Website/Facebook dùng chung cấu hình có thể thu gọn, hỗ trợ sáng/tối và không giới hạn nội dung trong các cột cuộn chật. Mỗi dòng ảnh có nút sinh riêng, chỉ thông báo thành công sau khi backend lưu ảnh xong. Luồng xử lý ChatGPT/Google Drive/Notion/Facebook được giữ nguyên.
-
-Logo PC mới được áp dụng trên Windows và macOS. Nguồn ảnh và cách tạo lại định dạng icon ở [docs/APP_ICON.md](docs/APP_ICON.md).
-
-### Tạo bộ cài
-
+### 1. Build cho Windows (NSIS Setup)
 ```bash
 npm run electron-build
+```
+* File cài đặt đầu ra: `dist-electron/MCP Khải Hoàn Derma Setup 1.0.0.exe`.
+* Hỗ trợ cài đặt linh hoạt, tự tạo shortcut trên Desktop và Start Menu với nhận diện thương hiệu Khải Hoàn Derma.
+
+### 2. Build cho macOS (Universal DMG)
+```bash
 npm run electron-build-mac
 ```
+* File đầu ra: `dist-electron/MCP Khải Hoàn Derma-1.0.0.Universal.dmg` (hỗ trợ cả Apple Silicon và Intel).
+* *Lưu ý:* Phải chạy lệnh này trên hệ điều hành macOS. Quy trình GitHub Actions cũng tự động build và đính kèm bản phát hành khi gắn thẻ `v*`.
 
-`electron-build-mac` phải chạy trên macOS. Workflow GitHub Actions tự tạo file `.dmg` trên runner macOS khi push tag `v*` hoặc chạy thủ công từ tab Actions.
+---
 
-## Hiệu năng kết nối
-
-Ứng dụng cache cấu hình chỉ đọc trong thời gian ngắn và tự vô hiệu cache sau mỗi lần lưu. Client OpenAI/Notion được tái sử dụng với HTTP keep-alive, timeout 30 giây và retry hữu hạn; luồng thao tác và dữ liệu nghiệp vụ không thay đổi.
+## 🛡️ Bản Quyền & Phát Triển
+* Dự án thuộc hệ thống tự động hóa nội dung của **Khải Hoàn Derma**.
+* Repository chính thức: [https://github.com/datdtpl-maker/MCPKhaihoanderma](https://github.com/datdtpl-maker/MCPKhaihoanderma).
