@@ -602,7 +602,7 @@ app.get("/api/google-drive/oauth/callback", async (req, res) => {
       googleDriveTokenExpiry: Date.now() + Number(tokens.expires_in || 3600) * 1000
     }));
     addLog("Đã kết nối Google Drive thành công.", "success");
-    res.type("html").send("<html><body style='font-family:system-ui;text-align:center;padding:48px'><h2>Đã kết nối Google Drive</h2><p>Bạn có thể đóng cửa sổ này và quay lại Notion Product Creator.</p><script>setTimeout(() => window.close(), 1200)</script></body></html>");
+    res.type("html").send("<html><body style='font-family:system-ui;text-align:center;padding:48px'><h2>Đã kết nối Google Drive</h2><p>Bạn có thể đóng cửa sổ này và quay lại MCP Khaihoanderma.</p><script>setTimeout(() => window.close(), 1200)</script></body></html>");
   } catch (err) {
     addLog(`Kết nối Google Drive thất bại: ${err.message}`, "error");
     res.status(400).type("html").send(`<html><body style='font-family:system-ui;padding:48px'><h2>Kết nối Google Drive thất bại</h2><p>${String(err.message).replace(/[<>&]/g, "")}</p></body></html>`);

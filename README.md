@@ -1,6 +1,6 @@
-# Notion Product Creator
+# MCP Khaihoanderma
 
-Ứng dụng desktop Electron hỗ trợ tạo nội dung sản phẩm, tạo ảnh bằng ChatGPT, đồng bộ Notion và chuẩn bị bài đăng Facebook.
+Ứng dụng desktop Electron hỗ trợ tạo nội dung sản phẩm, tạo ảnh bằng ChatGPT, đồng bộ Notion và chuẩn bị bài đăng Facebook cho Khải Hoàn Derma.
 
 ## Cài đặt và chạy source
 

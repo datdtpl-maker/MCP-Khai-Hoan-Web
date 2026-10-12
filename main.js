@@ -15,7 +15,7 @@ if (!hasSingleInstanceLock) {
     const win = new BrowserWindow({
       width: 1320,
       height: 880,
-      title: "Notion Product Creator",
+      title: "MCP Khaihoanderma",
       icon: path.join(__dirname, "public", process.platform === "win32" ? "favicon.ico" : "app-icon.png"),
       webPreferences: {
         nodeIntegration: false,
@@ -45,7 +45,7 @@ if (!hasSingleInstanceLock) {
     .then(createWindow)
     .catch((error) => {
       dialog.showErrorBox(
-        "Không thể mở Notion Product Creator",
+        "Không thể mở MCP Khaihoanderma",
         `Máy chủ nội bộ không khởi động được: ${error.message}`
       );
       app.quit();

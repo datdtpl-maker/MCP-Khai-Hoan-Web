@@ -30,7 +30,7 @@ jobs:
             test "$DRAFT" = "true" || { echo "Refusing to overwrite a published release"; exit 1; }
           else
             gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" \
-              --verify-tag --draft --title "Notion Product Creator $GITHUB_REF_NAME" \
+              --verify-tag --draft --title "MCP Khaihoanderma $GITHUB_REF_NAME" \
               --notes-file "docs/releases/$GITHUB_REF_NAME.md"
           fi
 
@@ -63,7 +63,7 @@ jobs:
         if: "!startsWith(github.ref, 'refs/tags/v')"
         uses: actions/upload-artifact@v4
         with:
-          name: Notion-Product-Creator-Windows-${{ github.ref_name }}
+          name: MCP-Khaihoanderma-Windows-${{ github.ref_name }}
           path: dist-electron/*.exe
           if-no-files-found: error
 
@@ -76,7 +76,7 @@ jobs:
           $version = $env:GITHUB_REF_NAME.Substring(1)
           $installers = @(Get-ChildItem -LiteralPath 'dist-electron' -Filter '*.exe' -File)
           if ($installers.Count -ne 1) { throw 'Expected exactly one Windows installer' }
-          $asset = "dist-electron/Notion.Product.Creator.Setup.$version.exe"
+          $asset = "dist-electron/MCP.Khaihoanderma.Setup.$version.exe"
           Copy-Item -LiteralPath $installers[0].FullName -Destination $asset
           gh release upload $env:GITHUB_REF_NAME $asset --repo $env:GITHUB_REPOSITORY --clobber
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -128,7 +128,7 @@ jobs:
         if: "!startsWith(github.ref, 'refs/tags/v')"
         uses: actions/upload-artifact@v4
         with:
-          name: Notion-Product-Creator-macOS-${{ github.ref_name }}
+          name: MCP-Khaihoanderma-macOS-${{ github.ref_name }}
           path: dist-electron/*.dmg
           if-no-files-found: error
 
@@ -141,7 +141,7 @@ jobs:
           VERSION="${GITHUB_REF_NAME#v}"
           INSTALLERS=(dist-electron/*.dmg)
           test "${#INSTALLERS[@]}" -eq 1
-          ASSET="dist-electron/Notion.Product.Creator.$VERSION.Universal.dmg"
+          ASSET="dist-electron/MCP.Khaihoanderma.$VERSION.Universal.dmg"
           cp "${INSTALLERS[0]}" "$ASSET"
           gh release upload "$GITHUB_REF_NAME" "$ASSET" --repo "$GITHUB_REPOSITORY" --clobber
 
@@ -157,6 +157,6 @@ jobs:
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           ASSETS="$(gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[] | select(.size > 1000000) | .name')"
-          grep -Fxq "Notion.Product.Creator.Setup.$VERSION.exe" <<< "$ASSETS"
-          grep -Fxq "Notion.Product.Creator.$VERSION.Universal.dmg" <<< "$ASSETS"
+          grep -Fxq "MCP.Khaihoanderma.Setup.$VERSION.exe" <<< "$ASSETS"
+          grep -Fxq "MCP.Khaihoanderma.$VERSION.Universal.dmg" <<< "$ASSETS"
           gh release edit "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft=false
