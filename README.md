@@ -1,4 +1,4 @@
-# MCP Khaihoanderma
+# MCP Khải Hoàn Derma
 
 Ứng dụng desktop Electron hỗ trợ tạo nội dung sản phẩm, tạo ảnh bằng ChatGPT, đồng bộ Notion và chuẩn bị bài đăng Facebook cho Khải Hoàn Derma.
 

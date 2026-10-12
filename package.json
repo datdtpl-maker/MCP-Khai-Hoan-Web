@@ -30,7 +30,7 @@
   },
   "build": {
     "appId": "com.khaihoan.mcpkhaihoanderma",
-    "productName": "MCP Khaihoanderma",
+    "productName": "MCP Khải Hoàn Derma",
     "publish": null,
     "directories": {
       "output": "dist-electron"
@@ -51,7 +51,7 @@
       "uninstallerIcon": "public/favicon.ico",
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "shortcutName": "MCP Khaihoanderma"
+      "shortcutName": "MCP Khải Hoàn Derma"
     },
     "files": [
       "main.js",

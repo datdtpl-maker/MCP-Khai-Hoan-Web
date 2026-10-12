@@ -15,7 +15,7 @@ if (!hasSingleInstanceLock) {
     const win = new BrowserWindow({
       width: 1320,
       height: 880,
-      title: "MCP Khaihoanderma",
+      title: "MCP Khải Hoàn Derma",
       icon: path.join(__dirname, "public", process.platform === "win32" ? "favicon.ico" : "app-icon.png"),
       webPreferences: {
         nodeIntegration: false,
@@ -45,7 +45,7 @@ if (!hasSingleInstanceLock) {
     .then(createWindow)
     .catch((error) => {
       dialog.showErrorBox(
-        "Không thể mở MCP Khaihoanderma",
+        "Không thể mở MCP Khải Hoàn Derma",
         `Máy chủ nội bộ không khởi động được: ${error.message}`
       );
       app.quit();

@@ -138,9 +138,14 @@ function decryptConfigSecret(value) {
   if (!value?.startsWith(SAFE_STORAGE_PREFIX)) return value;
   const safeStorage = getElectronSafeStorage();
   if (!safeStorage) {
-    throw new Error("Không thể giải mã cấu hình bảo mật trên máy này. Hãy mở ứng dụng Electron bằng đúng tài khoản đã lưu cấu hình.");
+    return "";
   }
-  return safeStorage.decryptString(Buffer.from(value.slice(SAFE_STORAGE_PREFIX.length), "base64"));
+  try {
+    return safeStorage.decryptString(Buffer.from(value.slice(SAFE_STORAGE_PREFIX.length), "base64"));
+  } catch (err) {
+    console.warn("Không thể giải mã secret (do cài trên máy khác hoặc khóa bảo mật đã đổi):", err.message);
+    return "";
+  }
 }
 
 const configStore = createConfigStore({
@@ -602,7 +607,7 @@ app.get("/api/google-drive/oauth/callback", async (req, res) => {
       googleDriveTokenExpiry: Date.now() + Number(tokens.expires_in || 3600) * 1000
     }));
     addLog("Đã kết nối Google Drive thành công.", "success");
-    res.type("html").send("<html><body style='font-family:system-ui;text-align:center;padding:48px'><h2>Đã kết nối Google Drive</h2><p>Bạn có thể đóng cửa sổ này và quay lại MCP Khaihoanderma.</p><script>setTimeout(() => window.close(), 1200)</script></body></html>");
+    res.type("html").send("<html><body style='font-family:system-ui;text-align:center;padding:48px'><h2>Đã kết nối Google Drive</h2><p>Bạn có thể đóng cửa sổ này và quay lại MCP Khải Hoàn Derma.</p><script>setTimeout(() => window.close(), 1200)</script></body></html>");
   } catch (err) {
     addLog(`Kết nối Google Drive thất bại: ${err.message}`, "error");
     res.status(400).type("html").send(`<html><body style='font-family:system-ui;padding:48px'><h2>Kết nối Google Drive thất bại</h2><p>${String(err.message).replace(/[<>&]/g, "")}</p></body></html>`);

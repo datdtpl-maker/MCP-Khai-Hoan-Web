@@ -7,7 +7,7 @@ const path = require("path");
 // with "Passed function is not well-serializable". Electron keeps app code as
 // normal JavaScript inside app.asar, which is compatible with Playwright.
 function build() {
-  console.log("=== BUILD MCP KHAIHOANDERMA (ELECTRON) ===");
+  console.log("=== BUILD MCP KHẢI HOÀN DERMA (ELECTRON) ===");
   execSync("npm run electron-build", { stdio: "inherit", cwd: __dirname });
 
   const outputDir = path.join(__dirname, "dist-electron");
