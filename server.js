@@ -22,7 +22,7 @@ const https = require("https");
 const { saveChatGptImage } = require("./lib/chatgpt-generated-image");
 const { createImageRequestTracker } = require('./lib/chatgpt-image-request');
 const { createConfigStore, redactConfig } = require("./lib/config-store");
-const { ensureFacebookPageComposer } = require("./lib/facebook-composer");
+const { ensureFacebookPageComposer, getFacebookPostEditor } = require("./lib/facebook-composer");
 const {
   DEFAULT_FACEBOOK_PROMPT,
   normalizeFacebookPromptLibrary,
@@ -1530,12 +1530,20 @@ app.post("/api/facebook/publish", async (req, res) => {
     const { composer, switched } = await ensureFacebookPageComposer(page);
     if (switched) addLog("Facebook đang ở danh tính cá nhân; tool đã tự chuyển sang danh tính Page.", "success");
     await composer.click();
-    const dialog = page.locator('[role="dialog"]').last();
-    // Facebook currently renders the composer editor outside the dialog subtree.
-    // The comment box has an aria-label, while the post composer does not.
-    const editor = page.locator('div[contenteditable="true"][role="textbox"]:not([aria-label])').last();
-    await editor.waitFor({ timeout: 15000 }); await editor.click(); await page.keyboard.insertText(content);
-    const fileInput = page.locator('input[type="file"][multiple]').last();
+    // Facebook composer editor may or may not have an aria-label ("Bạn đang nghĩ gì?"),
+    // while comment boxes have aria-labels containing "Bình luận" / "comment".
+    const editor = getFacebookPostEditor(page);
+    await editor.waitFor({ state: "visible", timeout: 15000 });
+    await editor.click();
+    await page.keyboard.insertText(content);
+    let fileInput = page.locator('input[type="file"][multiple]').last();
+    if ((await fileInput.count()) === 0) {
+      const photoButton = page.locator('[aria-label="Ảnh/video"], [aria-label="Photo/video"], div[role="button"]:has-text("Thêm ảnh/video")').first();
+      if (await photoButton.isVisible().catch(() => false)) {
+        await photoButton.click();
+      }
+      fileInput = page.locator('input[type="file"][multiple]').last();
+    }
     await fileInput.setInputFiles(imagePaths); await page.waitForTimeout(5000);
     const notion = await getNotionClient();
     const record = await findCoordinationPageByTitle(notion, productName);
