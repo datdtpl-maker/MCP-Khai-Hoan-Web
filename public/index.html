@@ -180,7 +180,7 @@
             <div class="prompts-accordion mt-4">
             <div class="accordion-header">
               <div class="section-heading"><span class="section-index" aria-hidden="true">03</span><h2>Bộ ảnh sản phẩm</h2></div>
-              <p class="desc-text">Mỗi prompt tạo một ảnh. Chỉ báo hoàn thành sau khi ảnh đã lưu.</p>
+              <p class="desc-text">Mỗi prompt tương ứng với 1 ảnh cố định (Ảnh 1 → 4). Bạn có thể bấm để chỉnh sửa nội dung hoặc khôi phục về mặc định.</p>
               <label for="target-product-folder" class="mt-3">Thư mục lưu ảnh 1–4</label>
               <input type="text" id="target-product-folder" readonly placeholder="Chọn thư mục trong Cấu hình hệ thống và nhập tên sản phẩm">
             </div>
@@ -210,6 +210,7 @@
                     <textarea id="prompt-1" rows="5" placeholder="Nhập mô tả prompt tạo ảnh bìa..."></textarea>
                   </div>
                   <div style="display:flex; justify-content:flex-end; gap: 10px;">
+                    <button type="button" class="btn text-btn btn-reset-prompt" data-index="1" title="Khôi phục Prompt 1 về mặc định">Khôi phục mặc định</button>
                     <button class="btn secondary btn-save-prompt" data-index="1">Lưu prompt 1</button>
                   </div>
                 </div>
@@ -240,6 +241,7 @@
                     <textarea id="prompt-2" rows="5" placeholder="Nhập mô tả prompt tạo ảnh thành phần..."></textarea>
                   </div>
                   <div style="display:flex; justify-content:flex-end; gap: 10px;">
+                    <button type="button" class="btn text-btn btn-reset-prompt" data-index="2" title="Khôi phục Prompt 2 về mặc định">Khôi phục mặc định</button>
                     <button class="btn secondary btn-save-prompt" data-index="2">Lưu prompt 2</button>
                   </div>
                 </div>
@@ -270,6 +272,7 @@
                     <textarea id="prompt-3" rows="5" placeholder="Nhập mô tả prompt tạo ảnh công dụng..."></textarea>
                   </div>
                   <div style="display:flex; justify-content:flex-end; gap: 10px;">
+                    <button type="button" class="btn text-btn btn-reset-prompt" data-index="3" title="Khôi phục Prompt 3 về mặc định">Khôi phục mặc định</button>
                     <button class="btn secondary btn-save-prompt" data-index="3">Lưu prompt 3</button>
                   </div>
                 </div>
@@ -300,6 +303,7 @@
                     <textarea id="prompt-4" rows="5" placeholder="Nhập mô tả prompt tạo ảnh hướng dẫn..."></textarea>
                   </div>
                   <div style="display:flex; justify-content:flex-end; gap: 10px;">
+                    <button type="button" class="btn text-btn btn-reset-prompt" data-index="4" title="Khôi phục Prompt 4 về mặc định">Khôi phục mặc định</button>
                     <button class="btn secondary btn-save-prompt" data-index="4">Lưu prompt 4</button>
                   </div>
                 </div>

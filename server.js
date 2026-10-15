@@ -28,6 +28,10 @@ const {
   normalizeFacebookPromptLibrary,
   resolveFacebookPrompt
 } = require("./lib/facebook-prompt-library");
+const {
+  DEFAULT_IMAGE_PROMPTS,
+  normalizeImagePrompts
+} = require("./lib/default-image-prompts");
 const { listFacebookProductsByStatus, markFacebookProductsAsPublished } = require("./lib/facebook-status");
 const { listNumberedImages, resolveProductImageFolder } = require("./lib/product-image-folder");
 const { getGoogleDriveFileId, downloadGoogleDriveLogo } = require("./lib/logo-image");
@@ -111,7 +115,7 @@ const CONFIG_DEFAULTS = {
   facebookTemplate: "",
   facebookPrompts: [{ ...DEFAULT_FACEBOOK_PROMPT }],
   selectedFacebookPromptId: DEFAULT_FACEBOOK_PROMPT.id,
-  prompts: []
+  prompts: DEFAULT_IMAGE_PROMPTS.map((prompt) => ({ ...prompt }))
 };
 
 function getElectronSafeStorage() {
@@ -314,23 +318,8 @@ async function getCompletedPromptImageIndexes(targetFolder) {
 async function loadConfig() {
   const cfg = await configStore.load();
 
-  // Normalize prompts to objects
-  const defaultTitles = [
-    "Ảnh 1: Cover Bán Hàng & Insight",
-    "Ảnh 2: Infographic Thành Phần",
-    "Ảnh 3: Infographic Công Dụng",
-    "Ảnh 4: Infographic Hướng Dẫn/Routine"
-  ];
-  if (!cfg.prompts || cfg.prompts.length === 0) {
-    cfg.prompts = defaultTitles.map(t => ({ title: t, content: "" }));
-  } else {
-    cfg.prompts = cfg.prompts.map((p, i) => {
-      if (typeof p === "string") {
-        return { title: defaultTitles[i] || `Ảnh ${i+1}`, content: p };
-      }
-      return p;
-    });
-  }
+  // Normalize image prompts to objects with full default fallback
+  cfg.prompts = normalizeImagePrompts(cfg.prompts);
 
   const facebookPromptLibrary = normalizeFacebookPromptLibrary(
     cfg.facebookPrompts,
@@ -491,6 +480,9 @@ app.post("/api/config", async (req, res) => {
       );
       next.facebookPrompts = facebookPromptLibrary.prompts;
       next.selectedFacebookPromptId = facebookPromptLibrary.selectedPromptId;
+      next.prompts = normalizeImagePrompts(
+        Object.prototype.hasOwnProperty.call(newCfg, "prompts") ? newCfg.prompts : cfg.prompts
+      );
       if (clientIdChanged) {
         next.googleDriveAccessToken = "";
         next.googleDriveRefreshToken = "";
