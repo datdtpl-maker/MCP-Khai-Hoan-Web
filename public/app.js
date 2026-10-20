@@ -407,7 +407,7 @@ Thiết kế hiện đại, rõ ràng, dễ đọc trên điện thoại, ngôn 
       const config = await res.json();
       if (!res.ok) throw new Error(config.error || "Không thể tải cấu hình.");
       
-      openAiApiKeyConfigured = Boolean(config.openAiApiKeyConfigured);
+      openAiApiKeyConfigured = Boolean(config.openAiApiKeyConfigured || config.geminiApiKeyConfigured);
       notionApiKeyConfigured = Boolean(config.notionApiKeyConfigured);
       updateNotionConfigStatus();
       if (localStorage.getItem('systemConfigCollapsed') === null && (!openAiApiKeyConfigured || !notionApiKeyConfigured)) {
@@ -415,7 +415,7 @@ Thiết kế hiện đại, rõ ràng, dễ đọc trên điện thoại, ngôn 
       }
       openaiKeyInput.value = "";
       notionKeyInput.value = "";
-      openaiKeyInput.placeholder = openAiApiKeyConfigured ? "Đã lưu an toàn — nhập mới để thay đổi" : "Nhập OpenAI API Key";
+      openaiKeyInput.placeholder = openAiApiKeyConfigured ? "Đã lưu an toàn — nhập mới để thay đổi" : "Nhập Gemini API Key (AIzaSy...)";
       notionKeyInput.placeholder = notionApiKeyConfigured ? "Đã lưu an toàn — nhập mới để thay đổi" : "Nhập Notion Access Token";
       googleDriveClientIdInput.value = config.googleDriveClientId || "";
       googleDriveClientSecretConfigured = Boolean(config.googleDriveClientSecretConfigured);
@@ -470,7 +470,9 @@ Thiết kế hiện đại, rõ ràng, dễ đọc trên điện thoại, ngôn 
   // Save config changes
   async function saveConfig() {
     const config = {
+      geminiApiKey: openaiKeyInput.value.trim(),
       openAiApiKey: openaiKeyInput.value.trim(),
+      geminiModel: "gemini-3.8-flash",
       notionApiKey: notionKeyInput.value.trim(),
       googleDriveClientId: googleDriveClientIdInput.value.trim(),
       defaultDriveParent: driveParentInput.value.trim(),
@@ -501,7 +503,7 @@ Thiết kế hiện đại, rõ ràng, dễ đọc trên điện thoại, ngôn 
         throw new Error(result.error || "Không thể lưu cấu hình.");
       }
       const result = await response.json();
-      openAiApiKeyConfigured = Boolean(result.config?.openAiApiKeyConfigured);
+      openAiApiKeyConfigured = Boolean(result.config?.openAiApiKeyConfigured || result.config?.geminiApiKeyConfigured);
       notionApiKeyConfigured = Boolean(result.config?.notionApiKeyConfigured);
       updateNotionConfigStatus();
       googleDriveClientSecretConfigured = Boolean(result.config?.googleDriveClientSecretConfigured);
@@ -854,13 +856,13 @@ Thiết kế hiện đại, rõ ràng, dễ đọc trên điện thoại, ngôn 
   btnCheckKey.addEventListener("click", async () => {
     const apiKey = openaiKeyInput.value.trim();
     if (!apiKey && !openAiApiKeyConfigured) {
-      alert("Vui lòng nhập OpenAI API Key trước.");
+      alert("Vui lòng nhập Gemini API Key trước.");
       return;
     }
     btnCheckKey.disabled = true;
-    appendLocalLog("Đang kết nối kiểm tra OpenAI API Key...", "info");
+    appendLocalLog("Đang kết nối kiểm tra Gemini API Key (gemini-3.8-flash)...", "info");
     try {
-      const res = await fetch("/api/openai/check", {
+      const res = await fetch("/api/gemini/check", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ apiKey })
@@ -887,13 +889,13 @@ Thiết kế hiện đại, rõ ràng, dễ đọc trên điện thoại, ngôn 
       const apiKey = openaiKeyInput.value.trim();
       const notionApiKey = notionKeyInput.value.trim();
       if (!apiKey && !notionApiKey && !openAiApiKeyConfigured && !notionApiKeyConfigured) {
-        alert("Vui lòng nhập OpenAI API Key hoặc Notion Access Token trước khi lưu.");
+        alert("Vui lòng nhập Gemini API Key hoặc Notion Access Token trước khi lưu.");
         return;
       }
       appendLocalLog("Đang lưu API Keys trên máy này...", "info");
       try {
         await saveConfig();
-        appendLocalLog("Đã lưu OpenAI API Key và Notion Access Token thành công!", "success");
+        appendLocalLog("Đã lưu Gemini API Key và Notion Access Token thành công!", "success");
         alert("Đã lưu API Keys thành công trên máy này!");
       } catch (err) {
         appendLocalLog(`Không thể lưu API Keys: ${err.message}`, "error");

@@ -32,6 +32,11 @@ const {
   DEFAULT_IMAGE_PROMPTS,
   normalizeImagePrompts
 } = require("./lib/default-image-prompts");
+const {
+  DEFAULT_GEMINI_MODEL,
+  generateContentWithGemini,
+  checkGeminiApiKey
+} = require("./lib/gemini-api");
 const { listFacebookProductsByStatus, markFacebookProductsAsPublished } = require("./lib/facebook-status");
 const { listNumberedImages, resolveProductImageFolder } = require("./lib/product-image-folder");
 const { getGoogleDriveFileId, downloadGoogleDriveLogo } = require("./lib/logo-image");
@@ -91,6 +96,7 @@ const LEGACY_CONFIG_PATH = isElectron
   : null;
 const SAFE_STORAGE_PREFIX = "electron-safe-storage:v1:";
 const SECRET_CONFIG_FIELDS = [
+  "geminiApiKey",
   "openAiApiKey",
   "notionApiKey",
   "googleDriveClientSecret",
@@ -98,7 +104,9 @@ const SECRET_CONFIG_FIELDS = [
   "googleDriveRefreshToken"
 ];
 const CONFIG_DEFAULTS = {
+  geminiApiKey: "",
   openAiApiKey: "",
+  geminiModel: DEFAULT_GEMINI_MODEL,
   notionApiKey: "",
   defaultDriveParent: "",
   googleDriveParentUrl: "",
@@ -231,15 +239,8 @@ function extractKeyPoints(content) {
   return content.substring(0, 400); // Fallback
 }
 
-async function generateSeoKeywords(apiKey, productName, content) {
-  const openai = apiClients.getOpenAI(apiKey);
-  const response = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
-    temperature: 0.2,
-    messages: [
-      {
-        role: "system",
-        content: `Bạn là chuyên gia SEO dược mỹ phẩm. Trả về CHÍNH XÁC 3 từ khóa SEO ngắn, ngăn cách duy nhất bằng dấu phẩy, không đánh số, không hashtag, không giải thích.
+async function generateSeoKeywords(apiKey, productName, content, model = DEFAULT_GEMINI_MODEL) {
+  const systemPrompt = `Bạn là chuyên gia SEO dược mỹ phẩm. Trả về CHÍNH XÁC 3 từ khóa SEO ngắn, ngăn cách duy nhất bằng dấu phẩy, không đánh số, không hashtag, không giải thích.
 
 Quy tắc bắt buộc theo đúng thứ tự:
 1. Từ khóa 1: tên/brand ngắn nhận diện nhất, lấy trực tiếp từ đầu tên sản phẩm; không dùng cụm chung chung như "gel trị mụn".
@@ -247,16 +248,19 @@ Quy tắc bắt buộc theo đúng thứ tự:
 3. Từ khóa 3: một công dụng/tình trạng chính, ngắn gọn và đúng dữ liệu.
 
 Ví dụ: "Drogsan Oximin Clindamycin 1% + Benzoyl Peroxide 5% – Gel Điều Trị Mụn Viêm, Mụn Mủ, Mụn Trứng Cá" phải trả về đúng dạng: "Drogsan Oximin, Clindamycin 1%, Mụn viêm".
-Không trả từ khóa quá rộng như "trị mụn, ngăn ngừa tái phát, giảm sưng viêm".`
-      },
-      {
-        role: "user",
-        content: `Tên sản phẩm: ${productName}\n\nNội dung và công dụng sản phẩm:\n${content}`
-      }
-    ]
+Không trả từ khóa quá rộng như "trị mụn, ngăn ngừa tái phát, giảm sưng viêm".`;
+
+  const userPrompt = `Tên sản phẩm: ${productName}\n\nNội dung và công dụng sản phẩm:\n${content}`;
+
+  const generatedText = await generateContentWithGemini({
+    apiKey,
+    systemInstruction: systemPrompt,
+    userPrompt,
+    model,
+    temperature: 0.2
   });
 
-  const keywords = (response.choices[0].message.content || "")
+  const keywords = generatedText
     .replace(/\r?\n/g, " ")
     .split(/[,;]/)
     .map((keyword) => keyword.trim().replace(/^[\-•\d.\s]+/, ""))
@@ -462,14 +466,22 @@ app.post("/api/config", async (req, res) => {
       const submittedClientSecret = typeof newCfg.googleDriveClientSecret === "string"
         ? newCfg.googleDriveClientSecret.trim()
         : "";
+      const submittedGeminiKey = typeof newCfg.geminiApiKey === "string" ? newCfg.geminiApiKey.trim() : "";
       const submittedOpenAiKey = typeof newCfg.openAiApiKey === "string" ? newCfg.openAiApiKey.trim() : "";
+      const submittedAiKey = submittedGeminiKey || submittedOpenAiKey;
       const submittedNotionKey = typeof newCfg.notionApiKey === "string" ? newCfg.notionApiKey.trim() : "";
       const submittedLogoUrl = typeof newCfg.logoImageUrl === "string" ? newCfg.logoImageUrl.trim() : "";
       if (submittedLogoUrl && !getGoogleDriveFileId(submittedLogoUrl)) {
         throw new Error("Link logo phải là link file Google Drive hợp lệ dạng drive.google.com/file/d/...");
       }
       const next = { ...cfg, ...newCfg };
-      next.openAiApiKey = submittedOpenAiKey || cfg.openAiApiKey;
+      if (submittedAiKey) {
+        next.geminiApiKey = submittedAiKey;
+        next.openAiApiKey = submittedAiKey;
+      }
+      if (typeof newCfg.geminiModel === "string" && newCfg.geminiModel.trim()) {
+        next.geminiModel = newCfg.geminiModel.trim();
+      }
       next.notionApiKey = submittedNotionKey || cfg.notionApiKey;
       next.googleDriveClientSecret = submittedClientSecret || (clientIdChanged ? "" : cfg.googleDriveClientSecret);
       const facebookPromptLibrary = normalizeFacebookPromptLibrary(
@@ -650,35 +662,33 @@ app.post("/api/app/clear-product-cache", (req, res) => {
   res.json({ success: true, message: "Đã xóa cache phiên sản phẩm. API Key, Notion token, Google Drive OAuth, link thư mục cha, link logo và prompt vẫn được giữ lại." });
 });
 
-// Test OpenAI API Key
-app.post("/api/openai/check", async (req, res) => {
+// Test Gemini / AI API Key
+async function handleCheckAiKey(req, res) {
   try {
     const config = await loadConfig();
-    const apiKey = String(req.body?.apiKey || "").trim() || config.openAiApiKey;
-    if (!apiKey) return res.status(400).json({ error: "Vui lòng cung cấp API Key." });
-    const openai = apiClients.getOpenAI(apiKey);
-    await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [{ role: "user", content: "ping" }],
-      max_tokens: 5
-    });
-    res.json({ success: true, message: "Kết nối thành công! API Key hoạt động bình thường." });
+    const apiKey = String(req.body?.apiKey || "").trim() || config.geminiApiKey || config.openAiApiKey;
+    if (!apiKey) return res.status(400).json({ error: "Vui lòng cung cấp Gemini API Key." });
+    const model = config.geminiModel || DEFAULT_GEMINI_MODEL;
+    const result = await checkGeminiApiKey(apiKey, model);
+    res.json(result);
   } catch (err) {
     res.status(400).json({ error: `Kiểm tra thất bại: ${err.message}` });
   }
-});
+}
+app.post("/api/gemini/check", handleCheckAiKey);
+app.post("/api/openai/check", handleCheckAiKey);
 
-// Write Post Content using OpenAI
-app.post("/api/openai/generate-content", async (req, res) => {
+// Write Post Content using Gemini (gemini-3.8-flash)
+async function handleGenerateArticleContent(req, res) {
   const { productName, details, category, price, driveParent } = req.body;
   if (!productName) {
     return res.status(400).json({ error: "Thiếu tên sản phẩm." });
   }
 
   const config = await loadConfig();
-  const apiKey = config.openAiApiKey;
+  const apiKey = config.geminiApiKey || config.openAiApiKey;
   if (!apiKey) {
-    return res.status(400).json({ error: "Chưa cấu hình OpenAI API Key trong ứng dụng." });
+    return res.status(400).json({ error: "Chưa cấu hình Gemini API Key trong ứng dụng. Vui lòng nhập API Key trong phần Cấu hình hệ thống." });
   }
 
   // Create product folder immediately if driveParent is provided
@@ -692,10 +702,10 @@ app.post("/api/openai/generate-content", async (req, res) => {
     }
   }
 
-  addLog(`Đang tạo nội dung bài viết cho sản phẩm: "${productName}"...`, "info");
+  const model = config.geminiModel || DEFAULT_GEMINI_MODEL;
+  addLog(`Đang tạo nội dung bài viết bằng mô hình ${model} cho sản phẩm: "${productName}"...`, "info");
 
   try {
-    const openai = apiClients.getOpenAI(apiKey);
     const systemPrompt = `
 Bạn là một dược sĩ lâm sàng cao cấp và chuyên gia sáng tạo nội dung cho nhà thuốc Khải Hoàn Skincare.
 Nhiệm vụ của bạn là viết một bài viết giới thiệu sản phẩm mới theo phong cách chuyên nghiệp, thực tế, đi thẳng vào vấn đề bệnh lý và công dụng thực tế của hoạt chất, không dùng từ ngữ ẩn dụ hoa mỹ sáo rỗng.
@@ -777,23 +787,23 @@ Thông tin bổ sung hoạt chất/công dụng/ghi chú:
 ${details || "Không cung cấp thêm chi tiết."}
     `.trim();
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt }
-      ],
+    const content = await generateContentWithGemini({
+      apiKey,
+      systemInstruction: systemPrompt,
+      userPrompt,
+      model,
       temperature: 0.7
     });
 
-    const content = response.choices[0].message.content.trim();
-    addLog(`Đã tạo nội dung thành công cho sản phẩm.`, "success");
+    addLog(`Đã tạo nội dung thành công cho sản phẩm (${model}).`, "success");
     res.json({ success: true, content });
   } catch (err) {
     addLog(`Lỗi tạo nội dung: ${err.message}`, "error");
     res.status(500).json({ error: err.message });
   }
-});
+}
+app.post("/api/gemini/generate-content", handleGenerateArticleContent);
+app.post("/api/openai/generate-content", handleGenerateArticleContent);
 
 // Open the operating system's native folder dialog. This lets the user choose
 // any mounted drive on Windows or macOS instead of starting from a fixed path.
@@ -1495,15 +1505,23 @@ app.post("/api/facebook/generate-content", async (req, res) => {
   try {
     const { productName, webUrl, template, prompt } = req.body;
     const config = await loadConfig();
-    if (!config.openAiApiKey) return res.status(400).json({ error: "Chưa cấu hình OpenAI API Key." });
+    const apiKey = config.geminiApiKey || config.openAiApiKey;
+    if (!apiKey) return res.status(400).json({ error: "Chưa cấu hình Gemini API Key." });
     const effectivePrompt = resolveFacebookPrompt({
       requestPrompt: prompt,
       prompts: config.facebookPrompts,
       selectedPromptId: config.selectedFacebookPromptId
     });
-    const openai = apiClients.getOpenAI(config.openAiApiKey);
-    const response = await openai.chat.completions.create({ model: "gpt-4o-mini", temperature: 0.8, messages: [{ role: "system", content: effectivePrompt }, { role: "user", content: `Sản phẩm: ${productName}\nLink web: ${webUrl || "chưa có"}\nMẫu tham khảo:\n${template || "Không có mẫu tham khảo."}` }] });
-    res.json({ content: response.choices[0].message.content.trim() });
+    const model = config.geminiModel || DEFAULT_GEMINI_MODEL;
+    const userPrompt = `Sản phẩm: ${productName}\nLink web: ${webUrl || "chưa có"}\nMẫu tham khảo:\n${template || "Không có mẫu tham khảo."}`;
+    const content = await generateContentWithGemini({
+      apiKey,
+      systemInstruction: effectivePrompt,
+      userPrompt,
+      model,
+      temperature: 0.8
+    });
+    res.json({ content });
   } catch (err) { res.status(err.code === "FACEBOOK_PROMPT_TOO_LONG" ? 400 : 500).json({ error: err.message }); }
 });
 
@@ -1596,12 +1614,14 @@ app.post("/api/notion/sync", async (req, res) => {
   try {
     const notion = await getNotionClient();
     const config = await loadConfig();
-    if (!config.openAiApiKey) {
-      throw new Error("Chưa cấu hình OpenAI API Key để tạo từ khóa SEO.");
+    const apiKey = config.geminiApiKey || config.openAiApiKey;
+    if (!apiKey) {
+      throw new Error("Chưa cấu hình Gemini API Key để tạo từ khóa SEO.");
     }
 
-    addLog(`Đang nhờ AI tạo 2-3 từ khóa SEO cho sản phẩm: "${productName}"...`, "info");
-    const finalKeywords = await generateSeoKeywords(config.openAiApiKey, productName, content);
+    const model = config.geminiModel || DEFAULT_GEMINI_MODEL;
+    addLog(`Đang nhờ AI (${model}) tạo 2-3 từ khóa SEO cho sản phẩm: "${productName}"...`, "info");
+    const finalKeywords = await generateSeoKeywords(apiKey, productName, content, model);
     addLog(`Đã tạo từ khóa SEO: "${finalKeywords}"`, "success");
 
     // Always resolve the product child folder. The optional URL in the form is
