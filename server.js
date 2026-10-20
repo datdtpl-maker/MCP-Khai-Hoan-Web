@@ -475,15 +475,13 @@ app.post("/api/config", async (req, res) => {
         throw new Error("Link logo phải là link file Google Drive hợp lệ dạng drive.google.com/file/d/...");
       }
       const next = { ...cfg, ...newCfg };
-      if (submittedAiKey) {
-        next.geminiApiKey = submittedAiKey;
-        next.openAiApiKey = submittedAiKey;
-      }
+      next.geminiApiKey = submittedAiKey || cfg.geminiApiKey || cfg.openAiApiKey || "";
+      next.openAiApiKey = submittedAiKey || cfg.openAiApiKey || cfg.geminiApiKey || "";
       if (typeof newCfg.geminiModel === "string" && newCfg.geminiModel.trim()) {
         next.geminiModel = newCfg.geminiModel.trim();
       }
-      next.notionApiKey = submittedNotionKey || cfg.notionApiKey;
-      next.googleDriveClientSecret = submittedClientSecret || (clientIdChanged ? "" : cfg.googleDriveClientSecret);
+      next.notionApiKey = submittedNotionKey || cfg.notionApiKey || "";
+      next.googleDriveClientSecret = submittedClientSecret || (clientIdChanged ? "" : (cfg.googleDriveClientSecret || ""));
       const facebookPromptLibrary = normalizeFacebookPromptLibrary(
         Object.prototype.hasOwnProperty.call(newCfg, "facebookPrompts") ? newCfg.facebookPrompts : cfg.facebookPrompts,
         Object.prototype.hasOwnProperty.call(newCfg, "selectedFacebookPromptId")
@@ -1516,7 +1514,7 @@ app.post("/api/facebook/generate-content", async (req, res) => {
     const userPrompt = `Sản phẩm: ${productName}\nLink web: ${webUrl || "chưa có"}\nMẫu tham khảo:\n${template || "Không có mẫu tham khảo."}`;
     const content = await generateContentWithGemini({
       apiKey,
-      systemInstruction: effectivePrompt,
+      systemInstruction: effectivePrompt, // content: effectivePrompt
       userPrompt,
       model,
       temperature: 0.8

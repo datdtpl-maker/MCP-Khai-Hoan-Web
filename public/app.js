@@ -469,11 +469,12 @@ Thiết kế hiện đại, rõ ràng, dễ đọc trên điện thoại, ngôn 
 
   // Save config changes
   async function saveConfig() {
+    const aiKey = openaiKeyInput.value.trim();
+    const notionKey = notionKeyInput.value.trim();
+    const clientSecret = googleDriveClientSecretInput.value.trim();
+
     const config = {
-      geminiApiKey: openaiKeyInput.value.trim(),
-      openAiApiKey: openaiKeyInput.value.trim(),
       geminiModel: "gemini-3.8-flash",
-      notionApiKey: notionKeyInput.value.trim(),
       googleDriveClientId: googleDriveClientIdInput.value.trim(),
       defaultDriveParent: driveParentInput.value.trim(),
       googleDriveParentUrl: productDriveUrlInput.value.trim(),
@@ -490,8 +491,16 @@ Thiết kế hiện đại, rõ ràng, dễ đọc trên điện thoại, ngôn 
         return { title, content };
       })
     };
-    const clientSecret = googleDriveClientSecretInput.value.trim();
-    if (clientSecret) config.googleDriveClientSecret = clientSecret;
+    if (aiKey) {
+      config.geminiApiKey = aiKey;
+      config.openAiApiKey = aiKey;
+    }
+    if (notionKey) {
+      config.notionApiKey = notionKey;
+    }
+    if (clientSecret) {
+      config.googleDriveClientSecret = clientSecret;
+    }
     try {
       const response = await fetch("/api/config", {
         method: "POST",
@@ -508,7 +517,7 @@ Thiết kế hiện đại, rõ ràng, dễ đọc trên điện thoại, ngôn 
       updateNotionConfigStatus();
       googleDriveClientSecretConfigured = Boolean(result.config?.googleDriveClientSecretConfigured);
       lastSavedGoogleDriveParentUrl = productDriveUrlInput.value.trim();
-      if (config.openAiApiKey) {
+      if (config.geminiApiKey || config.openAiApiKey) {
         openaiKeyInput.value = "";
         openaiKeyInput.placeholder = "Đã lưu an toàn — nhập mới để thay đổi";
       }

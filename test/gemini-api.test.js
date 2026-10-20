@@ -90,3 +90,16 @@ test("báo lỗi chi tiết khi Gemini API trả về lỗi", async () => {
     global.fetch = originalFetch;
   }
 });
+
+test("redactConfig nhận diện geminiApiKey và ẩn secret an toàn", () => {
+  const { redactConfig } = require("../lib/config-store");
+  const safe = redactConfig({
+    geminiApiKey: "AIzaSyTest12345",
+    openAiApiKey: "",
+    notionApiKey: "secret_notion"
+  });
+  assert.equal(safe.geminiApiKey, undefined);
+  assert.equal(safe.geminiApiKeyConfigured, true);
+  assert.equal(safe.openAiApiKeyConfigured, true);
+  assert.equal(safe.notionApiKeyConfigured, true);
+});
