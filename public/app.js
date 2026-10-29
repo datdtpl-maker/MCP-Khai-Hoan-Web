@@ -1339,7 +1339,7 @@ Thiết kế hiện đại, rõ ràng, dễ đọc trên điện thoại, ngôn 
       const notionRes = await fetch("/api/notion/sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ productName, content, driveParent, driveUrl: productDriveUrlInput.value.trim() || currentProductDriveUrl })
+        body: JSON.stringify({ productName, content, driveParent, driveUrl: productDriveUrlInput.value.trim() || currentProductDriveUrl, siteType: "derma" })
       });
       const notionData = await notionRes.json();
       if (!notionRes.ok) {
@@ -1349,11 +1349,11 @@ Thiết kế hiện đại, rõ ràng, dễ đọc trên điện thoại, ngôn 
       appendLocalLog("Đồng bộ bài viết lên Notion thành công!", "success");
       appendLocalLog("============== HOÀN THÀNH QUY TRÌNH NOTION ==============", "success");
       showCompletionPopup({
-        title: "Đã đẩy bài Website lên Notion",
+        title: "Đã đẩy bài Website Derma lên Notion",
         returnFocus: btnPushNotion,
-        message: "Bài viết đã được lưu trên Notion. Trạng thái: Content đang làm; Facebook: Chưa đăng.",
-        notionUrl: notionData.contentPageUrl,
-        notionLabel: "Mở bài Website trên Notion"
+        message: "Bài viết đã được lưu trên bảng điều phối Web KhaiHoanDerma. Trạng thái: Content đang làm; Facebook: Chưa đăng.",
+        notionUrl: notionData.contentPageUrl || "https://app.notion.com/p/9788b8a031cc42d391be4e26d6b8c8e8",
+        notionLabel: "Mở bảng Notion Derma"
       });
     } catch (err) {
       appendLocalLog(`Lỗi đồng bộ Notion: ${err.message}`, "error");
@@ -1956,8 +1956,8 @@ Thiết kế hiện đại, rõ ràng, dễ đọc trên điện thoại, ngôn 
           title: "Đã đẩy bài Website Pharma lên Notion",
           returnFocus: pharmaBtnPushNotion,
           message: "Bài viết đã được lưu trên bảng điều phối Web KhaiHoanPharma. Trạng thái: Content đang làm.",
-          notionUrl: notionData.contentPageUrl,
-          notionLabel: "Mở bài Website trên Notion"
+          notionUrl: notionData.contentPageUrl || "https://app.notion.com/p/40870655a9aa8150a9c0e01105450e7e",
+          notionLabel: "Mở bảng Notion Pharma"
         });
       } catch (err) {
         appendLocalLog(`Lỗi đồng bộ Notion: ${err.message}`, "error");

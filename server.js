@@ -1817,7 +1817,7 @@ app.post("/api/notion/sync", async (req, res) => {
 
     res.json({
       success: true,
-      contentPageUrl: contentPage?.url || null,
+      contentPageUrl: contentPage?.url || (siteType === "pharma" ? "https://app.notion.com/p/40870655a9aa8150a9c0e01105450e7e" : "https://app.notion.com/p/9788b8a031cc42d391be4e26d6b8c8e8"),
       coordinationPageId: coordinationPageId
     });
   } catch (err) {
