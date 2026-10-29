@@ -69,7 +69,7 @@ async function launchChromeDebug(port, userDataDir, startUrl, verifyProfile = fa
     : [`--remote-debugging-port=${port}`, `--user-data-dir=${userDataDir}`, "--remote-allow-origins=*", "--new-window", startUrl];
   if (verifyProfile) args.unshift('--enable-automation');
   await new Promise((resolve, reject) => {
-    const child = spawn(executable, args, { detached: true, stdio: "ignore", windowsHide: true });
+    const child = spawn(executable, args, { detached: true, stdio: "ignore" });
     child.once('error', reject);
     child.once('spawn', resolve);
     child.unref();
