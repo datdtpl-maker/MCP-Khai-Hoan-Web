@@ -383,7 +383,7 @@
 
     <div id="pharma-panel" class="product-panel" hidden>
     <div class="workspace-intro">
-      <div><p class="eyebrow">WEBSITE PHARMA</p><h2>Nội dung sản phẩm Pharma</h2><p class="desc-text">Điền thông tin, duyệt bài viết và tạo từng ảnh trước khi gửi Notion.</p></div>
+      <div><p class="eyebrow">WEBSITE PHARMA</p><h2>Nội dung sản phẩm</h2><p class="desc-text">Điền thông tin, duyệt bài viết và tạo từng ảnh trước khi gửi Notion.</p></div>
       <button id="pharma-btn-clear-product-cache" type="button" class="btn secondary" title="Xóa dữ liệu sản phẩm hiện tại; giữ nguyên API keys, thư mục và prompt.">+ Sản phẩm mới</button>
     </div>
     <main class="app-main">
@@ -438,40 +438,34 @@
               </div>
             </div>
             
-            <button id="pharma-btn-generate-content" class="btn primary w-full mt-3">Tạo bài viết bằng AI →</button>
-            <p class="desc-text text-center mt-2">Dùng Gemini 3.8 Flash sinh bài viết chuẩn SEO cho Website Pharma.</p>
+            <button id="pharma-btn-generate-content" class="btn primary w-full">Tạo bài viết bằng AI <span aria-hidden="true">→</span></button>
+            <p class="desc-text form-note">Nhập hoặc chọn danh mục. Bạn có thể sửa bài AI trước khi gửi Notion.</p>
           </div>
         </div>
       </section>
 
-      <!-- Center Column: Content & 4 Image Prompts -->
-      <section class="workspace-section col-center" aria-labelledby="pharma-article-section-title">
-        <div class="card glass flex-grow flex-col">
+      <!-- Middle Column: Article & Prompts -->
+      <section class="workspace-section col-mid" aria-labelledby="pharma-article-section-title">
+        <div class="card glass h-full flex-col">
           <div class="card-header flex-row justify-between">
-            <div><span class="section-index" aria-hidden="true">02</span><h2 id="pharma-article-section-title">Bài viết website</h2></div>
-            <div class="card-actions"><button id="pharma-btn-copy-content" class="btn text-btn">Sao chép</button></div>
-          </div>
-          <div class="card-body flex-grow flex-col">
-            <label for="pharma-article-content" class="sr-only">Nội dung bài viết website Pharma</label>
-            <textarea id="pharma-article-content" class="article-textarea flex-grow" placeholder="Bài viết Pharma sẽ xuất hiện tại đây...&#10;&#10;Sau khi AI tạo, bạn có thể chỉnh sửa tự do trước khi gửi sang Notion."></textarea>
-          </div>
-        </div>
-
-        <!-- 4 Image Prompts Section -->
-        <div class="card glass mt-4 prompts-card">
-          <div class="card-header">
-            <span class="section-index" aria-hidden="true">03</span><h2>Đổi ảnh sản phẩm</h2>
+            <div class="section-heading"><span class="section-index" aria-hidden="true">02</span><h2 id="pharma-article-section-title">Bài viết website</h2></div>
+            <div class="card-actions">
+              <button id="pharma-btn-copy-content" class="btn text-btn">Sao chép</button>
+              <button id="pharma-btn-toggle-expand-article" class="btn text-btn" aria-expanded="false" aria-controls="pharma-article-content">Phóng to</button>
+            </div>
           </div>
           <div class="card-body flex-grow">
-            <p class="desc-text mb-3">Đã gom prompt chung cho cả 4 ảnh (phím 1–4). Bạn có thể bấm [Sinh ảnh] từng prompt hoặc tự chỉnh sửa lệnh.</p>
-            
-            <div class="target-folder-container mb-3">
-              <span class="folder-label">Thư mục lưu ảnh 1–4:</span>
-              <span class="folder-path" id="pharma-target-folder-disp">Chưa chọn thư mục gốc</span>
+            <label for="pharma-article-content" class="editor-label">Nội dung bài viết <span>Markdown · Chỉnh sửa trực tiếp</span></label>
+            <textarea id="pharma-article-content" class="editor-textarea" placeholder="Bài viết AI sẽ xuất hiện tại đây.&#10;&#10;Xem lại thông tin sản phẩm, chỉnh sửa nội dung rồi gửi lên Notion khi sẵn sàng."></textarea>
+            <div class="prompts-accordion mt-4">
+            <div class="accordion-header">
+              <div class="section-heading"><span class="section-index" aria-hidden="true">03</span><h2>Bộ ảnh sản phẩm</h2></div>
+              <p class="desc-text">Mỗi prompt tương ứng với 1 ảnh cố định (Ảnh 1 → 4). Bạn có thể bấm để chỉnh sửa nội dung hoặc khôi phục về mặc định.</p>
+              <label for="pharma-target-product-folder" class="mt-3">Thư mục lưu ảnh 1–4</label>
+              <input type="text" id="pharma-target-product-folder" readonly placeholder="Chọn thư mục trong Cấu hình hệ thống và nhập tên sản phẩm">
+              <span id="pharma-target-folder-disp" style="display:none"></span>
             </div>
-
-            <!-- Collapsible Prompts Accordion for Pharma -->
-            <div class="prompts-accordion">
+            <div class="accordion-body">
               <!-- Collapsible Prompt 1 -->
               <div class="prompt-collapse-item">
                 <div class="prompt-toolbar">
@@ -596,7 +590,8 @@
                 </div>
               </div>
             </div>
-          </div>
+            </div>
+          </div> <!-- Close card-body flex-grow -->
           <div class="card-footer notion-footer">
             <p class="desc-text">Notion: <strong>Content đang làm</strong> (Web KhaiHoanPharma)</p>
             <button id="pharma-btn-push-notion" class="btn accent big-btn">Đẩy bài lên Notion <span aria-hidden="true">↗</span></button>

@@ -1774,22 +1774,43 @@ Thiết kế hiện đại, rõ ràng, dễ đọc trên điện thoại, ngôn 
   let pharmaCurrentProductDriveUrl = "";
 
   function updatePharmaTargetFolderDisplay() {
-    if (!pharmaTargetFolderDisp || !pharmaProdNameInput) return;
     const driveParent = pharmaDriveParentInput ? pharmaDriveParentInput.value.trim() : "";
-    const prodName = pharmaProdNameInput.value.trim();
-    if (!driveParent) {
-      pharmaTargetFolderDisp.textContent = "Chưa chọn thư mục gốc";
-      pharmaTargetFolderDisp.style.color = "var(--text-muted)";
-      return;
+    const prodName = pharmaProdNameInput ? pharmaProdNameInput.value.trim() : "";
+    const targetInput = document.getElementById("pharma-target-product-folder");
+    const safeName = prodName ? prodName.replace(/[\\/:*?"<>|]/g, "") : "";
+
+    if (targetInput) {
+      if (driveParent && safeName) {
+        const separatorChar = driveParent.includes("\\") ? "\\" : "/";
+        const separator = driveParent.endsWith(separatorChar) ? "" : separatorChar;
+        targetInput.value = driveParent + separator + safeName;
+      } else {
+        targetInput.value = driveParent || "";
+      }
     }
-    if (!prodName) {
-      pharmaTargetFolderDisp.textContent = `${driveParent}\\<Tên sản phẩm>`;
-      pharmaTargetFolderDisp.style.color = "var(--text-muted)";
-      return;
+
+    if (pharmaTargetFolderDisp) {
+      if (!driveParent) {
+        pharmaTargetFolderDisp.textContent = "Chưa chọn thư mục gốc";
+        pharmaTargetFolderDisp.style.color = "var(--text-muted)";
+      } else if (!prodName) {
+        pharmaTargetFolderDisp.textContent = `${driveParent}\\<Tên sản phẩm>`;
+        pharmaTargetFolderDisp.style.color = "var(--text-muted)";
+      } else {
+        pharmaTargetFolderDisp.textContent = `${driveParent}\\${safeName}`;
+        pharmaTargetFolderDisp.style.color = "var(--accent-hover)";
+      }
     }
-    const safeName = prodName.replace(/[\\/:*?"<>|]/g, "");
-    pharmaTargetFolderDisp.textContent = `${driveParent}\\${safeName}`;
-    pharmaTargetFolderDisp.style.color = "var(--accent-hover)";
+  }
+
+  const pharmaBtnToggleExpandArticle = document.getElementById("pharma-btn-toggle-expand-article");
+  if (pharmaBtnToggleExpandArticle && pharmaArticleContent) {
+    pharmaBtnToggleExpandArticle.addEventListener("click", () => {
+      const expanded = pharmaArticleContent.classList.toggle("expanded");
+      pharmaBtnToggleExpandArticle.textContent = expanded ? "Thu nhỏ" : "Phóng to";
+      pharmaBtnToggleExpandArticle.setAttribute('aria-expanded', String(expanded));
+      appendLocalLog(expanded ? "Đã phóng to ô soạn thảo bài viết Pharma." : "Đã thu nhỏ ô soạn thảo bài viết Pharma.", "info");
+    });
   }
 
   if (pharmaProdNameInput) {
