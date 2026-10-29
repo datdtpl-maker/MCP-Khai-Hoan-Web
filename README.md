@@ -97,5 +97,5 @@ npm run electron-build-mac
 ---
 
 ## 🛡️ Bản Quyền & Phát Triển
-* Dự án thuộc hệ thống tự động hóa nội dung của **Khải Hoàn Derma**.
-* Repository chính thức: [https://github.com/datdtpl-maker/MCPKhaihoanderma](https://github.com/datdtpl-maker/MCPKhaihoanderma).
+* Dự án thuộc hệ thống tự động hóa nội dung của **MCP Khải Hoàn Web** (Khải Hoàn Derma & Khải Hoàn Pharma).
+* Repository chính thức: [https://github.com/datdtpl-maker/MCP-Khai-Hoan-Web](https://github.com/datdtpl-maker/MCP-Khai-Hoan-Web).
