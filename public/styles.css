@@ -343,3 +343,33 @@ textarea { display: block; line-height: 1.7; resize: vertical; }
 .pharma-btn-generate-single { flex: 0 0 auto; }
 .pharma-btn-generate-single.accent { background: var(--primary-soft); color: var(--primary); border-color: var(--surface-border); }
 .pharma-btn-generate-single.accent:hover:not(:disabled) { background: var(--primary); color: var(--on-primary); }
+
+/* Category scan and searchable control */
+.field-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; gap: 8px; }
+.field-header label { margin-bottom: 0; }
+.btn-scan-cat {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: var(--surface-subtle); border: 1px solid var(--control-border);
+  color: var(--primary); font-size: 11px; font-weight: 600;
+  padding: 3px 8px; border-radius: 6px; cursor: pointer;
+  transition: all 160ms ease; line-height: 1.3; white-space: nowrap;
+}
+.btn-scan-cat:hover:not(:disabled) { background: var(--primary-soft); border-color: var(--primary); }
+.btn-scan-cat:disabled { opacity: 0.65; cursor: not-allowed; }
+.btn-scan-cat svg { flex-shrink: 0; transition: transform 400ms ease; }
+.btn-scan-cat.is-scanning svg { animation: working 0.8s linear infinite; }
+.category-select-wrapper { display: flex; flex-direction: column; gap: 6px; }
+.cat-search-input {
+  font-size: 11.5px !important; padding: 5px 9px !important;
+  background: var(--surface-subtle) !important; border-color: var(--control-border) !important;
+  border-radius: 6px !important;
+}
+.category-meta-info {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 11px; color: var(--muted); margin-top: 4px; min-height: 16px;
+}
+.category-meta-info .cat-status { font-weight: 550; }
+.category-meta-info .cat-status.success { color: var(--success); }
+.category-meta-info .cat-status.error { color: var(--danger-text); }
+select optgroup { font-weight: 700; color: var(--primary); background: var(--surface-subtle); }
+select option { font-weight: 400; color: var(--text); padding-left: 8px; background: var(--surface); }

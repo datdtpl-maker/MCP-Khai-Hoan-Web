@@ -46,6 +46,7 @@ const { readDebugEndpoint, bindChatGptSession, connectBoundChatGpt } = require('
 const { manualLoginArgs } = require('./lib/chrome-login');
 const { ensureChromeDebug, ensureChromeManual } = require('./lib/chrome-debug-start');
 const { connectionMessage, createConnectionHistory } = require('./lib/chatgpt-connection-state');
+const { getCategories } = require('./lib/category-sync');
 
 const execAsync = promisify(exec);
 const execFileAsync = promisify(execFile);
@@ -454,6 +455,18 @@ app.get("/api/config", async (req, res) => {
       config = await loadConfig();
     }
     res.json(redactConfig(config));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get or scan categories from WooCommerce websites
+app.get("/api/categories", async (req, res) => {
+  try {
+    const siteType = req.query.site === "pharma" ? "pharma" : "derma";
+    const forceRefresh = req.query.refresh === "true" || req.query.refresh === "1";
+    const result = await getCategories(siteType, { cacheDir: configDir, forceRefresh });
+    res.json({ success: true, ...result });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

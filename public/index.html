@@ -153,7 +153,15 @@
             </div>
             <div class="form-row">
               <div class="form-group col-6">
-                <label for="prod-category">Danh mục</label>
+                <div class="field-header">
+                  <label for="prod-category">Danh mục</label>
+                  <button type="button" class="btn-scan-cat" id="btn-scan-derma-cats" title="Quét danh mục mới nhất từ website khaihoanderma.com">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                    <span>Quét danh mục</span>
+                  </button>
+                </div>
+                <div class="category-select-wrapper">
+                  <input type="text" id="derma-cat-search" class="cat-search-input" placeholder="🔍 Gõ tìm nhanh danh mục..." autocomplete="off">
                 <select id="prod-category">
                   <option value="Phục hồi da">Phục hồi da</option>
                   <option value="Trị mụn" selected>Trị Mụn</option>
@@ -168,6 +176,11 @@
                   <option value="Thuốc">Thuốc</option>
                   <option value="Tóc">Tóc</option>
                 </select>
+                </div>
+                <div class="category-meta-info" id="derma-cat-meta">
+                  <span class="cat-count" id="derma-cat-count">12 danh mục</span>
+                  <span class="cat-status" id="derma-cat-status"></span>
+                </div>
               </div>
               <div class="form-group col-6">
                 <label for="prod-price">Giá bán (VND)</label>
@@ -399,18 +412,33 @@
             </div>
             <div class="form-row">
               <div class="form-group col-6">
-                <label for="pharma-prod-category">Danh mục <span class="desc-text" style="font-size:0.8em; font-weight:normal;">(Tự tạo)</span></label>
-                <input type="text" id="pharma-prod-category" list="pharma-category-list" placeholder="Nhập hoặc chọn danh mục...">
-                <datalist id="pharma-category-list">
-                  <option value="Thuốc không kê đơn"></option>
-                  <option value="Thuốc kê đơn"></option>
-                  <option value="Thực phẩm bảo vệ sức khỏe">
-                  <option value="Vitamin & Khoáng chất"></option>
-                  <option value="Dược mỹ phẩm điều trị">
-                  <option value="Thiết bị & Dụng cụ y tế"></option>
-                  <option value="Chăm sóc sức khỏe gia đình"></option>
-                  <option value="Dược liệu - Đông y"></option>
-                </datalist>
+                <div class="field-header">
+                  <label for="pharma-prod-category">Danh mục</label>
+                  <button type="button" class="btn-scan-cat" id="btn-scan-pharma-cats" title="Quét danh mục mới nhất từ website khaihoanpharma.com">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                    <span>Quét danh mục</span>
+                  </button>
+                </div>
+                <div class="category-select-wrapper">
+                  <input type="text" id="pharma-cat-search" class="cat-search-input" placeholder="🔍 Gõ tìm nhanh danh mục..." autocomplete="off">
+                  <select id="pharma-prod-category">
+                  </select>
+                </div>
+                <div class="category-meta-info" id="pharma-cat-meta">
+                  <span class="pharma-cat-count" id="pharma-cat-count">50 danh mục</span>
+                  <span class="pharma-cat-status" id="pharma-cat-status"></span>
+                </div>
+
+
+
+
+
+
+
+
+
+
+
               </div>
               <div class="form-group col-6">
                 <label for="pharma-prod-price">Giá bán (VND)</label>

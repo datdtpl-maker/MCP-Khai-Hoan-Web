@@ -1752,6 +1752,307 @@ Thiết kế hiện đại, rõ ràng, dễ đọc trên điện thoại, ngôn 
     });
   }
 
+  // CATEGORY SYNC & SEARCH LOGIC (DERMA & PHARMA)
+  // ==========================================
+  const defaultDermaCategories = [
+    { name: "Phục hồi da", fullName: "Phục hồi da" },
+    { name: "Trị Mụn", fullName: "Trị Mụn" },
+    { name: "Chăm Sóc Da", fullName: "Chăm Sóc Da" },
+    { name: "Chăm Sóc Mắt", fullName: "Chăm Sóc Mắt" },
+    { name: "Chống Nắng", fullName: "Chống Nắng" },
+    { name: "Cơ Thể", fullName: "Cơ Thể" },
+    { name: "Dưỡng Ẩm", fullName: "Dưỡng Ẩm" },
+    { name: "Làm Sạch Da", fullName: "Làm Sạch Da" },
+    { name: "Môi", fullName: "Môi" },
+    { name: "Phụ Kiện", fullName: "Phụ Kiện" },
+    { name: "Thuốc", fullName: "Thuốc" },
+    { name: "Tóc", fullName: "Tóc" }
+  ];
+
+  const defaultPharmaTree = [
+    {
+      name: "Chăm sóc cá nhân",
+      children: [
+        { name: "Chăm sóc răng miệng", fullName: "Chăm sóc cá nhân > Chăm sóc răng miệng" },
+        { name: "Miếng dán, dầu & cao xoa", fullName: "Chăm sóc cá nhân > Miếng dán, dầu & cao xoa" },
+        { name: "Sức khỏe giới tính", fullName: "Chăm sóc cá nhân > Sức khỏe giới tính" },
+        { name: "Vệ sinh cơ thể", fullName: "Chăm sóc cá nhân > Vệ sinh cơ thể" }
+      ]
+    },
+    { name: "Dinh dưỡng & thực phẩm bổ sung", children: [] },
+    {
+      name: "Dược mỹ phẩm",
+      children: [
+        { name: "Chăm sóc da mụn", fullName: "Dược mỹ phẩm > Chăm sóc da mụn" },
+        { name: "Chống nắng", fullName: "Dược mỹ phẩm > Chống nắng" },
+        { name: "Dưỡng ẩm da", fullName: "Dược mỹ phẩm > Dưỡng ẩm da" },
+        { name: "Làm sạch da", fullName: "Dược mỹ phẩm > Làm sạch da" }
+      ]
+    },
+    {
+      name: "Mẹ & bé",
+      children: [
+        { name: "Chăm sóc bé", fullName: "Mẹ & bé > Chăm sóc bé" },
+        { name: "Chăm sóc mẹ bầu & sau sinh", fullName: "Mẹ & bé > Chăm sóc mẹ bầu & sau sinh" }
+      ]
+    },
+    {
+      name: "Thiết bị y tế",
+      children: [
+        { name: "Máy đo đường huyết", fullName: "Thiết bị y tế > Máy đo đường huyết" },
+        { name: "Máy đo huyết áp", fullName: "Thiết bị y tế > Máy đo huyết áp" },
+        { name: "Máy xông khí dung", fullName: "Thiết bị y tế > Máy xông khí dung" },
+        { name: "Nhiệt kế", fullName: "Thiết bị y tế > Nhiệt kế" },
+        { name: "Thiết bị theo dõi sức khỏe", fullName: "Thiết bị y tế > Thiết bị theo dõi sức khỏe" }
+      ]
+    },
+    {
+      name: "Thuốc",
+      children: [
+        { name: "Thuốc chăm sóc da & niêm mạc", fullName: "Thuốc > Thuốc chăm sóc da & niêm mạc" },
+        { name: "Thuốc chống dị ứng", fullName: "Thuốc > Thuốc chống dị ứng" },
+        { name: "Thuốc cơ xương khớp", fullName: "Thuốc > Thuốc cơ xương khớp" },
+        { name: "Thuốc da liễu", fullName: "Thuốc > Thuốc da liễu" },
+        { name: "Thuốc đái tháo đường", fullName: "Thuốc > Thuốc đái tháo đường" },
+        { name: "Thuốc đường uống", fullName: "Thuốc > Thuốc đường uống" },
+        { name: "Thuốc gan mật", fullName: "Thuốc > Thuốc gan mật" },
+        { name: "Thuốc huyết học", fullName: "Thuốc > Thuốc huyết học" },
+        { name: "Thuốc kháng vi sinh vật", fullName: "Thuốc > Thuốc kháng vi sinh vật" },
+        { name: "Thuốc kháng viêm", fullName: "Thuốc > Thuốc kháng viêm" },
+        { name: "Thuốc mắt, tai, mũi & họng", fullName: "Thuốc > Thuốc mắt, tai, mũi & họng" },
+        { name: "Thuốc nhi khoa", fullName: "Thuốc > Thuốc nhi khoa" },
+        { name: "Thuốc nội tiết", fullName: "Thuốc > Thuốc nội tiết" },
+        { name: "Thuốc thần kinh", fullName: "Thuốc > Thuốc thần kinh" },
+        { name: "Thuốc tiêu hóa & dạ dày", fullName: "Thuốc > Thuốc tiêu hóa & dạ dày" },
+        { name: "Thuốc tim mạch & huyết áp", fullName: "Thuốc > Thuốc tim mạch & huyết áp" },
+        { name: "Thuốc tuyến yên & tuyến giáp", fullName: "Thuốc > Thuốc tuyến yên & tuyến giáp" },
+        { name: "Thuốc vitamin & khoáng chất", fullName: "Thuốc > Thuốc vitamin & khoáng chất" }
+      ]
+    },
+    {
+      name: "Thực phẩm bảo vệ sức khỏe",
+      children: [
+        { name: "Hỗ trợ kiểm soát cân nặng", fullName: "Thực phẩm bảo vệ sức khỏe > Hỗ trợ kiểm soát cân nặng" },
+        { name: "Hỗ trợ làm đẹp", fullName: "Thực phẩm bảo vệ sức khỏe > Hỗ trợ làm đẹp" },
+        { name: "Hỗ trợ tiêu hóa", fullName: "Thực phẩm bảo vệ sức khỏe > Hỗ trợ tiêu hóa" },
+        { name: "Hỗ trợ xương khớp", fullName: "Thực phẩm bảo vệ sức khỏe > Hỗ trợ xương khớp" },
+        { name: "Vitamin & khoáng chất", fullName: "Thực phẩm bảo vệ sức khỏe > Vitamin & khoáng chất" }
+      ]
+    },
+    {
+      name: "Vật tư y tế",
+      children: [
+        { name: "Bông, băng & gạc", fullName: "Vật tư y tế > Bông, băng & gạc" },
+        { name: "Găng tay y tế", fullName: "Vật tư y tế > Găng tay y tế" },
+        { name: "Khẩu trang y tế", fullName: "Vật tư y tế > Khẩu trang y tế" },
+        { name: "Sát khuẩn & khử khuẩn", fullName: "Vật tư y tế > Sát khuẩn & khử khuẩn" }
+      ]
+    }
+  ];
+
+  function setupCategoryControl(options) {
+    const {
+      selectEl,
+      searchEl,
+      scanBtnEl,
+      countEl,
+      statusEl,
+      siteType,
+      initialTree = [],
+      initialFlat = [],
+      preserveInitial = false
+    } = options;
+
+    if (!selectEl) return;
+
+    let currentTree = [...initialTree];
+    let currentFlat = [...initialFlat];
+
+    function renderCategoryOptions(tree, flatList, selectedVal) {
+      const valToKeep = selectedVal || selectEl.value;
+      selectEl.innerHTML = "";
+
+      const placeholderOpt = document.createElement("option");
+      placeholderOpt.value = "";
+      placeholderOpt.textContent = "-- Chọn danh mục --";
+      if (!valToKeep) placeholderOpt.selected = true;
+      selectEl.appendChild(placeholderOpt);
+
+      if (tree && tree.length) {
+        for (const group of tree) {
+          if (group.children && group.children.length) {
+            const optgroup = document.createElement("optgroup");
+            optgroup.label = group.name;
+
+            const rootOpt = document.createElement("option");
+            rootOpt.value = group.name;
+            rootOpt.textContent = `${group.name} (Tất cả)`;
+            rootOpt.dataset.fullname = group.name;
+            if (group.name.toLowerCase() === (valToKeep || "").toLowerCase()) rootOpt.selected = true;
+            optgroup.appendChild(rootOpt);
+
+            for (const child of group.children) {
+              const childOpt = document.createElement("option");
+              childOpt.value = child.name;
+              childOpt.textContent = `↳ ${child.name}`;
+              childOpt.dataset.fullname = child.fullName || `${group.name} > ${child.name}`;
+              if (child.name.toLowerCase() === (valToKeep || "").toLowerCase() || childOpt.dataset.fullname.toLowerCase() === (valToKeep || "").toLowerCase()) {
+                childOpt.selected = true;
+              }
+              optgroup.appendChild(childOpt);
+            }
+            selectEl.appendChild(optgroup);
+          } else {
+            const opt = document.createElement("option");
+            opt.value = group.name;
+            opt.textContent = group.name;
+            opt.dataset.fullname = group.name;
+            if (group.name.toLowerCase() === (valToKeep || "").toLowerCase()) opt.selected = true;
+            selectEl.appendChild(opt);
+          }
+        }
+      } else if (flatList && flatList.length) {
+        for (const item of flatList) {
+          const name = typeof item === "string" ? item : item.name;
+          const opt = document.createElement("option");
+          opt.value = name;
+          opt.textContent = name;
+          opt.dataset.fullname = typeof item === "string" ? item : (item.fullName || name);
+          if (name.toLowerCase() === (valToKeep || "").toLowerCase()) opt.selected = true;
+          selectEl.appendChild(opt);
+        }
+      }
+
+      if (countEl) {
+        const total = flatList ? flatList.length : 0;
+        const subCount = flatList ? flatList.filter(c => c.fullName && c.fullName.includes(" > ")).length : 0;
+        countEl.textContent = subCount > 0 ? `${total} danh mục (${subCount} danh mục con)` : `${total} danh mục`;
+      }
+    }
+
+    if (searchEl) {
+      searchEl.addEventListener("input", () => {
+        const query = searchEl.value.trim().toLowerCase();
+        if (!query) {
+          renderCategoryOptions(currentTree, currentFlat, selectEl.value);
+          return;
+        }
+
+        const filtered = currentFlat.filter(c => {
+          const name = typeof c === "string" ? c : (c.fullName || c.name);
+          return name.toLowerCase().includes(query);
+        });
+
+        selectEl.innerHTML = "";
+        if (filtered.length === 0) {
+          const noOpt = document.createElement("option");
+          noOpt.disabled = true;
+          noOpt.textContent = `Không tìm thấy danh mục nào khớp "${searchEl.value.trim()}"`;
+          selectEl.appendChild(noOpt);
+        } else {
+          filtered.forEach(c => {
+            const opt = document.createElement("option");
+            const name = typeof c === "string" ? c : c.name;
+            const full = typeof c === "string" ? c : (c.fullName || c.name);
+            opt.value = name;
+            opt.textContent = full;
+            opt.dataset.fullname = full;
+            selectEl.appendChild(opt);
+          });
+          selectEl.selectedIndex = 0;
+        }
+      });
+
+      selectEl.addEventListener("change", () => {
+        if (searchEl.value) searchEl.value = "";
+      });
+    }
+
+    async function scan(forceRefresh = true) {
+      if (scanBtnEl) {
+        scanBtnEl.disabled = true;
+        scanBtnEl.classList.add("is-scanning");
+      }
+      if (statusEl) {
+        statusEl.textContent = "Đang quét...";
+        statusEl.className = "cat-status";
+      }
+
+      try {
+        const res = await fetch(`/api/categories?site=${siteType}${forceRefresh ? "&refresh=1" : ""}`);
+        const data = await res.json();
+        if (!res.ok || !data.success) throw new Error(data.error || "Không thể quét danh mục.");
+
+        currentFlat = data.categories || [];
+        currentTree = data.tree || [];
+
+        renderCategoryOptions(currentTree, currentFlat, selectEl.value);
+
+        if (statusEl) {
+          statusEl.textContent = `Đã cập nhật ${currentFlat.length} danh mục`;
+          statusEl.className = "cat-status success";
+          setTimeout(() => { if (statusEl) statusEl.textContent = ""; }, 4000);
+        }
+        appendLocalLog(`[${siteType.toUpperCase()}] Đã quét thành công ${currentFlat.length} danh mục từ website.`, "success");
+      } catch (err) {
+        if (statusEl) {
+          statusEl.textContent = "Lỗi kết nối web";
+          statusEl.className = "cat-status error";
+        }
+        appendLocalLog(`[${siteType.toUpperCase()}] Lỗi quét danh mục: ${err.message}`, "error");
+      } finally {
+        if (scanBtnEl) {
+          scanBtnEl.disabled = false;
+          scanBtnEl.classList.remove("is-scanning");
+        }
+      }
+    }
+
+    if (scanBtnEl) {
+      scanBtnEl.addEventListener("click", () => scan(true));
+    }
+
+    if (!preserveInitial) {
+      renderCategoryOptions(currentTree, currentFlat, selectEl.value || (siteType === "pharma" ? "Chăm sóc da mụn" : ""));
+    }
+
+    return { scan, renderCategoryOptions };
+  }
+
+  // Derma categories control
+  const dermaCategoryControl = setupCategoryControl({
+    selectEl: prodCategoryInput,
+    searchEl: document.getElementById("derma-cat-search"),
+    scanBtnEl: document.getElementById("btn-scan-derma-cats"),
+    countEl: document.getElementById("derma-cat-count"),
+    statusEl: document.getElementById("derma-cat-status"),
+    siteType: "derma",
+    initialFlat: defaultDermaCategories,
+    preserveInitial: true // Keep initial 12 options for UI test fixture compatibility
+  });
+
+  // Flatten pharma tree for flat search
+  const defaultPharmaFlat = [];
+  for (const group of defaultPharmaTree) {
+    defaultPharmaFlat.push({ name: group.name, fullName: group.name, isParent: true });
+    for (const child of group.children) {
+      defaultPharmaFlat.push({ name: child.name, fullName: child.fullName, isParent: false });
+    }
+  }
+
+  // Pharma categories control
+  const pharmaCategoryControl = setupCategoryControl({
+    selectEl: document.getElementById("pharma-prod-category"),
+    searchEl: document.getElementById("pharma-cat-search"),
+    scanBtnEl: document.getElementById("btn-scan-pharma-cats"),
+    countEl: document.getElementById("pharma-cat-count"),
+    statusEl: document.getElementById("pharma-cat-status"),
+    siteType: "pharma",
+    initialTree: defaultPharmaTree,
+    initialFlat: defaultPharmaFlat,
+    preserveInitial: false
+  });
+
   // WEBSITE PHARMA MODULE LOGIC
   // ==========================================
   const pharmaProdNameInput = document.getElementById("pharma-prod-name");
