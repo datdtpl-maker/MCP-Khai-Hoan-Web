@@ -683,7 +683,7 @@ Thiết kế hiện đại, rõ ràng, dễ đọc trên điện thoại, ngôn 
     try {
       const res = await fetch("/api/chrome/status");
       const data = await res.json();
-      const singleGenBtns = document.querySelectorAll(".btn-generate-single");
+      const singleGenBtns = document.querySelectorAll(".btn-generate-single, .pharma-btn-generate-single");
       chatGptReady = Boolean(data.ready) && !chromeActionBusy;
       const stateLabels = { verification_required: 'ChatGPT: Chờ xác minh', auth_error: 'ChatGPT: Lỗi đăng nhập', login_required: 'ChatGPT: Chưa đăng nhập', loading: 'ChatGPT: Đang tải', manual: 'Chrome: Đăng nhập thủ công', connection_error: 'Chrome: Lỗi kết nối' };
       btnManualChrome.hidden = !['verification_required', 'auth_error', 'login_required', 'connection_error'].includes(data.state);
@@ -698,7 +698,7 @@ Thiết kế hiện đại, rõ ràng, dễ đọc trên điện thoại, ngôn 
       }
     } catch (err) {
       chatGptReady = false;
-      document.querySelectorAll('.btn-generate-single').forEach(btn => { btn.disabled = true; });
+      document.querySelectorAll('.btn-generate-single, .pharma-btn-generate-single').forEach(btn => { btn.disabled = true; });
       console.error("Lỗi check Chrome status:", err);
     }
   }
@@ -1081,7 +1081,7 @@ Thiết kế hiện đại, rõ ràng, dễ đọc trên điện thoại, ngôn 
     const buttons = [btnLoginChrome, btnStartChrome, btnCheckChrome, btnManualChrome, btnDiagnoseChrome];
     chromeActionBusy = true;
     chatGptReady = false;
-    document.querySelectorAll('.btn-generate-single').forEach(button => { button.disabled = true; });
+    document.querySelectorAll('.btn-generate-single, .pharma-btn-generate-single').forEach(button => { button.disabled = true; });
     buttons.forEach(button => { button.disabled = true; });
     if (route === '/api/chrome/diagnose') chromeLoginHint.textContent = 'Đang quan sát kết nối khoảng 6 giây; không tải lại trang hoặc gửi prompt...';
     try {
@@ -1322,17 +1322,39 @@ Thiết kế hiện đại, rõ ràng, dễ đọc trên điện thoại, ngôn 
     }
   });
 
+  const sharedColRight = document.getElementById("shared-col-right");
+  const websitePanel = document.getElementById("website-panel");
+  const pharmaPanel = document.getElementById("pharma-panel");
+  const facebookPanel = document.getElementById("facebook-panel");
+
   document.querySelectorAll(".product-tab").forEach((tab) => {
     tab.addEventListener("click", () => {
-      const isFacebook = tab.dataset.productTab === "facebook";
+      const target = tab.dataset.productTab;
       document.querySelectorAll(".product-tab").forEach((item) => {
         item.classList.toggle("active", item === tab);
         item.setAttribute('aria-pressed', String(item === tab));
       });
-      document.querySelector('.skip-link').href = isFacebook ? '#facebook-pending-products' : '#prod-name';
-      document.getElementById("website-panel").hidden = isFacebook;
-      document.getElementById("facebook-panel").hidden = !isFacebook;
-      if (isFacebook) loadPendingFacebookProducts();
+      if (target === "website") {
+        document.querySelector('.skip-link').href = '#prod-name';
+        websitePanel.hidden = false;
+        if (pharmaPanel) pharmaPanel.hidden = true;
+        facebookPanel.hidden = true;
+        if (sharedColRight) websitePanel.querySelector(".app-main").appendChild(sharedColRight);
+        updateTargetFolderDisplay();
+      } else if (target === "pharma") {
+        document.querySelector('.skip-link').href = '#pharma-prod-name';
+        websitePanel.hidden = true;
+        if (pharmaPanel) pharmaPanel.hidden = false;
+        facebookPanel.hidden = true;
+        if (sharedColRight) pharmaPanel.querySelector(".app-main").appendChild(sharedColRight);
+        updatePharmaTargetFolderDisplay();
+      } else if (target === "facebook") {
+        document.querySelector('.skip-link').href = '#facebook-pending-products';
+        websitePanel.hidden = true;
+        if (pharmaPanel) pharmaPanel.hidden = true;
+        facebookPanel.hidden = false;
+        loadPendingFacebookProducts();
+      }
     });
   });
 
@@ -1645,6 +1667,364 @@ Thiết kế hiện đại, rõ ràng, dễ đọc trên điện thoại, ngôn 
   prodNameInput.addEventListener("input", updateTargetFolderDisplay);
   driveParentInput.addEventListener("change", updateTargetFolderDisplay);
   
+
+  // ==========================================
+  // WEBSITE PHARMA MODULE LOGIC
+  // ==========================================
+  const pharmaProdNameInput = document.getElementById("pharma-prod-name");
+  const pharmaProdCategoryInput = document.getElementById("pharma-prod-category");
+  const pharmaProdPriceInput = document.getElementById("pharma-prod-price");
+  const pharmaProdDetailsInput = document.getElementById("pharma-prod-details");
+  const pharmaImageDropzone = document.getElementById("pharma-image-dropzone");
+  const pharmaRefImageInput = document.getElementById("pharma-ref-image");
+  const pharmaDropzoneText = document.getElementById("pharma-dropzone-text");
+  const pharmaPreviewContainer = document.getElementById("pharma-preview-container");
+  const pharmaImgPreview = document.getElementById("pharma-img-preview");
+  const pharmaBtnRemoveImg = document.getElementById("pharma-btn-remove-img");
+  const pharmaBtnGenerateContent = document.getElementById("pharma-btn-generate-content");
+  const pharmaArticleContent = document.getElementById("pharma-article-content");
+  const pharmaBtnCopyContent = document.getElementById("pharma-btn-copy-content");
+  const pharmaBtnPushNotion = document.getElementById("pharma-btn-push-notion");
+  const pharmaBtnClearProductCache = document.getElementById("pharma-btn-clear-product-cache");
+  const pharmaTargetFolderDisp = document.getElementById("pharma-target-folder-disp");
+  let pharmaReferenceImageBase64 = null;
+  let pharmaCurrentProductDriveUrl = "";
+
+  function updatePharmaTargetFolderDisplay() {
+    if (!pharmaTargetFolderDisp || !pharmaProdNameInput) return;
+    const driveParent = driveParentInput.value.trim();
+    const prodName = pharmaProdNameInput.value.trim();
+    if (!driveParent) {
+      pharmaTargetFolderDisp.textContent = "Chưa chọn thư mục gốc";
+      pharmaTargetFolderDisp.style.color = "var(--text-muted)";
+      return;
+    }
+    if (!prodName) {
+      pharmaTargetFolderDisp.textContent = `${driveParent}\\<Tên sản phẩm>`;
+      pharmaTargetFolderDisp.style.color = "var(--text-muted)";
+      return;
+    }
+    const safeName = prodName.replace(/[\\/:*?"<>|]/g, "");
+    pharmaTargetFolderDisp.textContent = `${driveParent}\\${safeName}`;
+    pharmaTargetFolderDisp.style.color = "var(--accent-hover)";
+  }
+
+  if (pharmaProdNameInput) {
+    pharmaProdNameInput.addEventListener("input", updatePharmaTargetFolderDisplay);
+  }
+
+  // Dropzone for Pharma reference image
+  if (pharmaDropzoneText && pharmaRefImageInput) {
+    pharmaDropzoneText.addEventListener("click", () => pharmaRefImageInput.click());
+    pharmaRefImageInput.addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        pharmaReferenceImageBase64 = event.target.result;
+        pharmaImgPreview.src = event.target.result;
+        pharmaPreviewContainer.style.display = "block";
+        pharmaDropzoneText.style.display = "none";
+      };
+      reader.readAsDataURL(file);
+    });
+    if (pharmaImageDropzone) {
+      pharmaImageDropzone.addEventListener("dragover", (e) => { e.preventDefault(); pharmaImageDropzone.classList.add("dragover"); });
+      pharmaImageDropzone.addEventListener("dragleave", () => pharmaImageDropzone.classList.remove("dragover"));
+      pharmaImageDropzone.addEventListener("drop", (e) => {
+        e.preventDefault();
+        pharmaImageDropzone.classList.remove("dragover");
+        const file = e.dataTransfer.files[0];
+        if (file && file.type.startsWith("image/")) {
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            pharmaReferenceImageBase64 = event.target.result;
+            pharmaImgPreview.src = event.target.result;
+            pharmaPreviewContainer.style.display = "block";
+            pharmaDropzoneText.style.display = "none";
+          };
+          reader.readAsDataURL(file);
+        }
+      });
+    }
+  }
+
+  if (pharmaBtnRemoveImg) {
+    pharmaBtnRemoveImg.addEventListener("click", (e) => {
+      e.stopPropagation();
+      pharmaReferenceImageBase64 = null;
+      pharmaRefImageInput.value = "";
+      pharmaPreviewContainer.style.display = "none";
+      pharmaDropzoneText.style.display = "flex";
+      pharmaImgPreview.src = "";
+    });
+  }
+
+  if (pharmaBtnCopyContent) {
+    pharmaBtnCopyContent.addEventListener("click", () => {
+      if (!pharmaArticleContent.value.trim()) return alert("Chưa có nội dung để sao chép.");
+      navigator.clipboard.writeText(pharmaArticleContent.value.trim());
+      appendLocalLog("Đã sao chép nội dung bài viết Pharma vào clipboard.", "success");
+      alert("Đã sao chép bài viết Pharma vào clipboard!");
+    });
+  }
+
+  if (pharmaBtnClearProductCache) {
+    pharmaBtnClearProductCache.addEventListener("click", () => {
+      if (confirm("Bạn có chắc muốn xóa dữ liệu sản phẩm Pharma hiện tại để làm sản phẩm mới?")) {
+        pharmaProdNameInput.value = "";
+        pharmaProdCategoryInput.value = "";
+        pharmaProdPriceInput.value = "150.000";
+        pharmaProdDetailsInput.value = "";
+        pharmaArticleContent.value = "";
+        pharmaReferenceImageBase64 = null;
+        if (pharmaPreviewContainer) pharmaPreviewContainer.style.display = "none";
+        if (pharmaDropzoneText) pharmaDropzoneText.style.display = "flex";
+        if (pharmaImgPreview) pharmaImgPreview.src = "";
+        updatePharmaTargetFolderDisplay();
+        localStorage.removeItem("pharmaProductDraft");
+        appendLocalLog("Đã làm mới khung sản phẩm Pharma.", "info");
+      }
+    });
+  }
+
+  if (pharmaBtnGenerateContent) {
+    pharmaBtnGenerateContent.addEventListener("click", async () => {
+      const productName = pharmaProdNameInput.value.trim();
+      const details = pharmaProdDetailsInput.value.trim();
+      const category = pharmaProdCategoryInput.value.trim();
+      const price = pharmaProdPriceInput.value.trim();
+      const driveParent = driveParentInput.value.trim();
+
+      if (!productName) {
+        alert("Vui lòng nhập tên sản phẩm Pharma trước.");
+        return;
+      }
+
+      pharmaBtnGenerateContent.disabled = true;
+      pharmaBtnGenerateContent.textContent = "Đang viết bài Pharma…";
+      pharmaArticleContent.setAttribute('aria-busy', 'true');
+
+      try {
+        await saveConfig();
+        const res = await fetch("/api/openai/generate-content", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ productName, details, category, price, driveParent, siteType: "pharma" })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          pharmaArticleContent.value = data.content;
+          pharmaBtnPushNotion.disabled = false;
+        } else {
+          throw new Error(data.error);
+        }
+      } catch (err) {
+        alert(`Lỗi: ${err.message}`);
+      } finally {
+        pharmaBtnGenerateContent.disabled = false;
+        pharmaBtnGenerateContent.textContent = "Tạo bài viết bằng AI →";
+        pharmaArticleContent.setAttribute('aria-busy', 'false');
+      }
+    });
+  }
+
+  if (pharmaBtnPushNotion) {
+    pharmaBtnPushNotion.addEventListener("click", async () => {
+      const productName = pharmaProdNameInput.value.trim();
+      const content = pharmaArticleContent.value.trim();
+      const driveParent = driveParentInput.value.trim();
+
+      if (!productName || !content) {
+        alert("Vui lòng nhập Tên sản phẩm và Tạo nội dung bài viết trước.");
+        return;
+      }
+      if (!driveParent) {
+        alert("Vui lòng cấu hình 'Thư mục gốc sản phẩm & ảnh' trước.");
+        return;
+      }
+
+      pharmaBtnPushNotion.disabled = true;
+      pharmaBtnPushNotion.textContent = "Đang gửi Notion…";
+      appendLocalLog("============== ĐẨY BÀI VIẾT PHARMA LÊN NOTION ==============", "info");
+
+      try {
+        await saveConfig();
+        appendLocalLog("Đang đồng bộ bài viết Pharma và thiết lập trạng thái 'Content đang làm' trên Notion...", "info");
+        const notionRes = await fetch("/api/notion/sync", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            productName,
+            content,
+            driveParent,
+            driveUrl: productDriveUrlInput.value.trim() || pharmaCurrentProductDriveUrl,
+            siteType: "pharma"
+          })
+        });
+        const notionData = await notionRes.json();
+        if (!notionRes.ok) {
+          throw new Error(notionData.error || "Lỗi đồng bộ Notion.");
+        }
+
+        appendLocalLog("Đồng bộ bài viết Pharma lên Notion thành công!", "success");
+        appendLocalLog("============== HOÀN THÀNH QUY TRÌNH NOTION (PHARMA) ==============", "success");
+        showCompletionPopup({
+          title: "Đã đẩy bài Website Pharma lên Notion",
+          returnFocus: pharmaBtnPushNotion,
+          message: "Bài viết đã được lưu trên bảng điều phối Web KhaiHoanPharma. Trạng thái: Content đang làm; Facebook: Chưa đăng.",
+          notionUrl: notionData.contentPageUrl,
+          notionLabel: "Mở bài Website trên Notion"
+        });
+      } catch (err) {
+        appendLocalLog(`Lỗi đồng bộ Notion: ${err.message}`, "error");
+        alert(`Đồng bộ thất bại: ${err.message}`);
+      } finally {
+        pharmaBtnPushNotion.disabled = false;
+        pharmaBtnPushNotion.textContent = "Đẩy bài lên Notion ↗";
+      }
+    });
+  }
+
+  // Setup Pharma Prompts & Single Image Buttons 1-4
+  for (let i = 1; i <= 4; i++) {
+    const header = document.getElementById(`pharma-prompt-header-${i}`);
+    const contentBox = document.getElementById(`pharma-prompt-content-${i}`);
+    const btnGen = document.getElementById(`pharma-btn-generate-single-${i}`);
+    const btnExpand = document.querySelector(`.pharma-btn-toggle-expand-prompt[data-pharma-index="${i}"]`);
+    const btnReset = document.querySelector(`.pharma-btn-reset-prompt[data-pharma-index="${i}"]`);
+    const btnSave = document.querySelector(`.pharma-btn-save-prompt[data-pharma-index="${i}"]`);
+    const titleInput = document.getElementById(`pharma-prompt-title-${i}`);
+    const titleDisp = document.getElementById(`pharma-prompt-title-disp-${i}`);
+    const contentInput = document.getElementById(`pharma-prompt-${i}`);
+
+    if (titleInput && defaultImagePrompts[i - 1]) {
+      const defP = defaultImagePrompts[i - 1];
+      titleInput.value = defP.title;
+      if (titleDisp) titleDisp.textContent = defP.title;
+      if (contentInput) contentInput.value = defP.content;
+    }
+
+    if (header && contentBox) {
+      header.addEventListener("click", () => {
+        const isExpanded = header.getAttribute("aria-expanded") === "true";
+        header.setAttribute("aria-expanded", String(!isExpanded));
+        contentBox.style.display = isExpanded ? "none" : "block";
+        header.classList.toggle("active", !isExpanded);
+      });
+    }
+
+    if (btnExpand && contentInput) {
+      btnExpand.addEventListener("click", () => {
+        const isExpanded = btnExpand.getAttribute("aria-expanded") === "true";
+        btnExpand.setAttribute("aria-expanded", String(!isExpanded));
+        btnExpand.textContent = isExpanded ? "Phóng to" : "Thu nhỏ";
+        contentInput.style.minHeight = isExpanded ? "" : "320px";
+      });
+    }
+
+    if (btnReset && defaultImagePrompts[i - 1]) {
+      btnReset.addEventListener("click", () => {
+        const defP = defaultImagePrompts[i - 1];
+        titleInput.value = defP.title;
+        if (titleDisp) titleDisp.textContent = defP.title;
+        if (contentInput) contentInput.value = defP.content;
+        appendLocalLog(`Đã khôi phục Prompt Pharma ${i} về mặc định.`, "info");
+      });
+    }
+
+    if (btnSave && defaultImagePrompts[i - 1]) {
+      btnSave.addEventListener("click", () => {
+        const defP = defaultImagePrompts[i - 1];
+        if (titleDisp) titleDisp.textContent = titleInput.value.trim() || defP.title;
+        appendLocalLog(`Đã lưu Prompt Pharma ${i}.`, "success");
+        alert(`Đã lưu Prompt Pharma ${i}!`);
+      });
+    }
+
+    if (btnGen) {
+      btnGen.title = 'Tạo một ảnh Pharma, tự lưu đúng thư mục rồi chờ bạn chọn prompt tiếp theo.';
+      btnGen.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        const productName = pharmaProdNameInput.value.trim();
+        const driveParent = driveParentInput.value.trim();
+        const promptText = contentInput.value.trim();
+        const details = pharmaProdDetailsInput.value.trim();
+        const contentVal = pharmaArticleContent.value.trim();
+
+        if (!productName) return alert("Vui lòng điền Tên sản phẩm trước khi tạo ảnh.");
+        if (!driveParent) return alert("Vui lòng chọn Thư mục Google Drive.");
+        if (!promptText) return alert("Nội dung prompt tạo ảnh trống.");
+
+        await checkChromeStatus();
+        if (!chatGptReady) {
+          alert('ChatGPT chưa sẵn sàng. Đăng nhập rồi bấm Kiểm tra và khóa tab trước khi sinh ảnh.');
+          return;
+        }
+
+        const allGenBtns = document.querySelectorAll('.pharma-btn-generate-single');
+        imageGenerationBusy = true;
+        btnGen.textContent = `Đang tạo ảnh ${i}…`;
+        btnGen.setAttribute('aria-busy', 'true');
+        allGenBtns.forEach(b => { b.disabled = true; });
+        appendLocalLog(`============== KHỞI CHẠY TẠO ẢNH PHARMA ${i} ==============`, "info");
+
+        try {
+          await saveConfig();
+          const res = await fetch("/api/chrome/generate-single-image", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              productName,
+              driveParent,
+              driveUrl: productDriveUrlInput.value.trim() || pharmaCurrentProductDriveUrl,
+              promptIndex: String(i),
+              promptText,
+              details,
+              content: contentVal,
+              referenceImage: i === 1 ? pharmaReferenceImageBase64 : null,
+              logoImageUrl: logoImageUrlInput.value.trim(),
+              siteType: "pharma"
+            })
+          });
+          const data = await res.json();
+          if (res.ok) {
+            if (data.driveUrl) pharmaCurrentProductDriveUrl = data.driveUrl;
+            appendLocalLog(data.message, "success");
+            appendLocalLog(`Đang tạo riêng ảnh Pharma ${i}. Tool sẽ tự lưu kết quả; giữ nguyên tab ChatGPT trong lúc chạy.`, 'info');
+            while (true) {
+              await new Promise(r => setTimeout(r, 1500));
+              const statusRes = await fetch('/api/chrome/image-job');
+              const job = await statusRes.json();
+              if (job.status === 'completed' && job.completed.includes(i)) {
+                appendLocalLog(`✓ Ảnh Pharma ${i} đã được tạo và lưu thành công!`, "success");
+                showCompletionPopup({
+                  title: `Đã lưu ảnh Pharma ${i}`,
+                  returnFocus: document.getElementById(`pharma-prompt-header-${i}`),
+                  message: `Ảnh đã được lưu tại: ${job.savedPath || 'thư mục sản phẩm'}. Bạn có thể chọn prompt tiếp theo.`
+                });
+                break;
+              }
+              if (job.status === 'failed') {
+                throw new Error(job.error || `Tạo ảnh Pharma ${i} thất bại.`);
+              }
+            }
+          } else {
+            throw new Error(data.error);
+          }
+        } catch (err) {
+          appendLocalLog(`Lỗi tạo ảnh Pharma ${i}: ${err.message}`, "error");
+          alert(`Lỗi: ${err.message}`);
+        } finally {
+          imageGenerationBusy = false;
+          btnGen.textContent = `Sinh ảnh ${i}`;
+          btnGen.removeAttribute('aria-busy');
+          allGenBtns.forEach(b => { b.disabled = !chatGptReady; });
+        }
+      });
+    }
+  }
+
   // Poll logs and Chrome status periodically
   setInterval(fetchLogs, 1000);
   setInterval(checkChromeStatus, 4000);

@@ -678,7 +678,7 @@ app.post("/api/openai/check", handleCheckAiKey);
 
 // Write Post Content using Gemini (gemini-3.8-flash)
 async function handleGenerateArticleContent(req, res) {
-  const { productName, details, category, price, driveParent } = req.body;
+  const { productName, details, category, price, driveParent, siteType = "derma" } = req.body;
   if (!productName) {
     return res.status(400).json({ error: "Thiếu tên sản phẩm." });
   }
@@ -705,7 +705,7 @@ async function handleGenerateArticleContent(req, res) {
 
   try {
     const systemPrompt = `
-Bạn là một dược sĩ lâm sàng cao cấp và chuyên gia sáng tạo nội dung cho nhà thuốc Khải Hoàn Skincare.
+Bạn là một dược sĩ lâm sàng cao cấp và chuyên gia sáng tạo nội dung cho ${siteType === "pharma" ? "nhà thuốc Khải Hoàn Pharma" : "nhà thuốc Khải Hoàn Skincare"}.
 Nhiệm vụ của bạn là viết một bài viết giới thiệu sản phẩm mới theo phong cách chuyên nghiệp, thực tế, đi thẳng vào vấn đề bệnh lý và công dụng thực tế của hoạt chất, không dùng từ ngữ ẩn dụ hoa mỹ sáo rỗng.
 
 Cấu trúc bài viết bắt buộc phải tuân theo cấu trúc Markdown chính xác sau:
@@ -1124,8 +1124,7 @@ async function resolveDriveFolderUrl(folderPath, suppliedParentUrl, productName)
 }
 
 // Helper: Query coordination page by title
-async function findCoordinationPageByTitle(notion, productName) {
-  const coordinationDbId = "9788b8a0-31cc-42d3-91be-4e26d6b8c8e8";
+async function findCoordinationPageByTitle(notion, productName, coordinationDbId = DERMA_COORDINATION_DATABASE_ID) {
   const response = await notion.databases.query({
     database_id: coordinationDbId,
     filter: {
@@ -1145,7 +1144,7 @@ async function findCoordinationPageByTitle(notion, productName) {
 app.get('/api/chrome/image-job', (req, res) => res.json(imageJob));
 
 app.post("/api/chrome/generate-single-image", async (req, res) => {
-  const { productName, driveParent, driveUrl: suppliedDriveUrl, promptIndex, promptText, details, content, referenceImage, logoImageUrl } = req.body;
+  const { productName, driveParent, driveUrl: suppliedDriveUrl, promptIndex, promptText, details, content, referenceImage, logoImageUrl, siteType = "derma" } = req.body;
   if (!productName) {
     return res.status(400).json({ error: "Thiếu tên sản phẩm." });
   }
@@ -1367,11 +1366,12 @@ async function runSingleImageAutomationInBackground(port, refImagePath, logoImag
       // "Content đang làm". The manual Push to Notion action also keeps this
       // status while checking "Content xong", so Content can revise the images.
       try {
-        const coordinationDbId = "9788b8a0-31cc-42d3-91be-4e26d6b8c8e8";
+        const targetCoordinationDbId = siteType === "pharma" ? PHARMA_COORDINATION_DATABASE_ID : DERMA_COORDINATION_DATABASE_ID;
+        const coordinationDbId = targetCoordinationDbId;
         const notion = await getNotionClient();
         const mediaProperty = driveUrl ? { "Media sản phẩm": { url: driveUrl } } : {};
         
-        const existingPage = await findCoordinationPageByTitle(notion, productName);
+        const existingPage = await findCoordinationPageByTitle(notion, productName, targetCoordinationDbId);
         if (existingPage) {
           addLog(`[Ảnh ${promptIndex}] Cập nhật trạng thái "Content đang làm" trên Notion...`, "info");
           await notion.pages.update({
@@ -1443,13 +1443,19 @@ app.post("/api/facebook/start", async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-const COORDINATION_DATABASE_ID = "9788b8a0-31cc-42d3-91be-4e26d6b8c8e8";
+const DERMA_COORDINATION_DATABASE_ID = "9788b8a0-31cc-42d3-91be-4e26d6b8c8e8";
+const PHARMA_COORDINATION_DATABASE_ID = "40870655-a9aa-8150-a9c0-e01105450e7e";
+const COORDINATION_DATABASE_ID = DERMA_COORDINATION_DATABASE_ID;
 
 // List products that are ready to be prepared for Facebook posting.
 app.get("/api/facebook/pending-products", async (req, res) => {
   try {
     const notion = await getNotionClient();
-    const products = await listFacebookProductsByStatus(notion, COORDINATION_DATABASE_ID, "Chưa đăng");
+    const [dermaProducts, pharmaProducts] = await Promise.all([
+      listFacebookProductsByStatus(notion, DERMA_COORDINATION_DATABASE_ID, "Chưa đăng"),
+      listFacebookProductsByStatus(notion, PHARMA_COORDINATION_DATABASE_ID, "Chưa đăng").catch(() => [])
+    ]);
+    const products = [...dermaProducts, ...pharmaProducts].sort((a, b) => a.productName.localeCompare(b.productName, "vi"));
     res.json({ products });
   } catch (err) {
     res.status(500).json({ error: `Không thể quét danh sách Notion: ${err.message}` });
@@ -1459,7 +1465,11 @@ app.get("/api/facebook/pending-products", async (req, res) => {
 app.get("/api/facebook/waiting-products", async (req, res) => {
   try {
     const notion = await getNotionClient();
-    const products = await listFacebookProductsByStatus(notion, COORDINATION_DATABASE_ID, "Chờ đăng");
+    const [dermaProducts, pharmaProducts] = await Promise.all([
+      listFacebookProductsByStatus(notion, DERMA_COORDINATION_DATABASE_ID, "Chờ đăng"),
+      listFacebookProductsByStatus(notion, PHARMA_COORDINATION_DATABASE_ID, "Chờ đăng").catch(() => [])
+    ]);
+    const products = [...dermaProducts, ...pharmaProducts].sort((a, b) => a.productName.localeCompare(b.productName, "vi"));
     res.json({ products });
   } catch (err) {
     res.status(500).json({ error: `Không thể quét bài Facebook Chờ đăng: ${err.message}` });
@@ -1598,13 +1608,14 @@ app.post("/api/facebook/publish", async (req, res) => {
 
 // Sync Notion Databases
 app.post("/api/notion/sync", async (req, res) => {
-  const { productName, content, driveUrl, driveParent } = req.body;
+  const { productName, content, driveUrl, driveParent, siteType = "derma" } = req.body;
   if (!productName || !content) {
     return res.status(400).json({ error: "Thiếu dữ liệu đồng bộ Notion (tên sản phẩm hoặc nội dung bài viết)." });
   }
 
   const contentDataSourceId = "22c70655-a9aa-80f5-a0b5-000b9dfd1d8b"; // Công việc của Tây
-  const coordinationDbId = "9788b8a0-31cc-42d3-91be-4e26d6b8c8e8"; // Đăng sản phẩm đơn giản
+  const targetCoordinationDbId = siteType === "pharma" ? PHARMA_COORDINATION_DATABASE_ID : DERMA_COORDINATION_DATABASE_ID;
+  const coordinationDbId = targetCoordinationDbId;
   const coordinationDataSourceId = "4dcd280a-9505-49fb-9b63-33407108603a";
 
   addLog(`Đang khởi tạo kết nối Notion API...`, "info");
@@ -1644,7 +1655,7 @@ app.post("/api/notion/sync", async (req, res) => {
         "Tên tài liệu": {
           title: [
             {
-              text: { content: `${productName} WEB` }
+              text: { content: `${productName} WEB${siteType === "pharma" ? " PHARMA" : ""}` }
             }
           ]
         },
@@ -1672,7 +1683,7 @@ app.post("/api/notion/sync", async (req, res) => {
 
     // 2. Create or Update coordination record in "Đăng sản phẩm đơn giản"
     addLog(`Đang tìm trang điều phối cho sản phẩm: "${productName}"...`, "info");
-    const existingPage = await findCoordinationPageByTitle(notion, productName);
+    const existingPage = await findCoordinationPageByTitle(notion, productName, targetCoordinationDbId);
     
     let coordinationPageId;
     if (existingPage) {
@@ -1716,7 +1727,7 @@ app.post("/api/notion/sync", async (req, res) => {
     } else {
       addLog(`Không tìm thấy trang sẵn có. Đang tạo trang điều phối mới với trạng thái "Content đang làm"...`, "info");
       const createdPage = await notion.pages.create({
-        parent: { data_source_id: coordinationDataSourceId },
+        parent: siteType === "pharma" ? { database_id: targetCoordinationDbId } : { data_source_id: coordinationDataSourceId },
         properties: {
           "Tên sản phẩm": {
             title: [

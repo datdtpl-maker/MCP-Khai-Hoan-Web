@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MCP Khải Hoàn Derma</title>
+  <title>MCP Khải Hoàn Web</title>
   <link rel="icon" href="favicon.ico">
   <link rel="stylesheet" href="styles.css">
   <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -16,8 +16,8 @@
       <div class="logo-area">
         <img class="logo-icon" src="app-icon.png" width="42" height="42" alt="" aria-hidden="true">
         <div class="logo-text">
-          <h1>MCP Khải Hoàn Derma</h1>
-          <p>KHẢI HOÀN DERMA <span aria-hidden="true">/</span> Content workspace</p>
+          <h1>MCP Khải Hoàn Web</h1>
+          <p>KHẢI HOÀN ECOSYSTEM <span aria-hidden="true">/</span> Content workspace</p>
         </div>
       </div>
       <div class="status-indicators">
@@ -33,10 +33,11 @@
       </div>
     </header>
 
-    <nav class="product-tabs" aria-label="Nhóm MCP Khải Hoàn Derma">
+    <nav class="product-tabs" aria-label="Nhóm MCP Khải Hoàn Web">
       <button class="product-tab active" data-product-tab="website" aria-pressed="true" aria-controls="website-panel"><span class="tab-mark" aria-hidden="true">W</span>Website Derma</button>
+      <button class="product-tab" data-product-tab="pharma" aria-pressed="false" aria-controls="pharma-panel"><span class="tab-mark" aria-hidden="true">P</span>Website Pharma</button>
       <button class="product-tab" data-product-tab="facebook" aria-pressed="false" aria-controls="facebook-panel"><span class="tab-mark" aria-hidden="true">f</span>Page Facebook</button>
-      <span class="nav-caption">MCP Khải Hoàn Derma</span>
+      <span class="nav-caption">MCP Khải Hoàn Web</span>
     </nav>
 
         <div id="system-config-card" class="card glass system-config-card">
@@ -319,7 +320,7 @@
       </section>
 
       <!-- Right Column: Controls & Logs -->
-      <section class="workspace-section col-right">
+      <section id="shared-col-right" class="workspace-section col-right">
         <div class="card glass">
           <div class="card-header">
             <h2>Kết nối ChatGPT</h2>
@@ -341,6 +342,231 @@
           </div>
           <div class="card-body flex-grow log-container" id="log-box">
             <!-- Logs will be appended here dynamically -->
+          </div>
+        </div>
+      </section>
+    </main>
+    </div>
+
+    <div id="pharma-panel" class="product-panel" hidden>
+    <div class="workspace-intro">
+      <div><p class="eyebrow">WEBSITE PHARMA</p><h2>Nội dung sản phẩm Pharma</h2><p class="desc-text">Điền thông tin, duyệt bài viết và tạo từng ảnh trước khi gửi Notion.</p></div>
+      <button id="pharma-btn-clear-product-cache" type="button" class="btn secondary" title="Xóa dữ liệu sản phẩm hiện tại; giữ nguyên API keys, thư mục và prompt.">+ Sản phẩm mới</button>
+    </div>
+    <main class="app-main">
+      <section class="workspace-section col-left" aria-labelledby="pharma-product-info-title">
+        <div class="card glass product-info-card">
+          <div class="card-header">
+            <span class="section-index" aria-hidden="true">01</span><h2 id="pharma-product-info-title">Thông tin sản phẩm</h2>
+          </div>
+          <div class="card-body">
+            <div class="form-group">
+              <label for="pharma-prod-name">Tên sản phẩm <span class="required">*</span></label>
+              <input type="text" id="pharma-prod-name" required placeholder="Ví dụ: Paracetamol 500mg Khải Hoàn">
+            </div>
+            <div class="form-row">
+              <div class="form-group col-6">
+                <label for="pharma-prod-category">Danh mục <span class="desc-text" style="font-size:0.8em; font-weight:normal;">(Tự tạo)</span></label>
+                <input type="text" id="pharma-prod-category" list="pharma-category-list" placeholder="Nhập hoặc chọn danh mục...">
+                <datalist id="pharma-category-list">
+                  <option value="Thuốc không kê đơn"></option>
+                  <option value="Thuốc kê đơn"></option>
+                  <option value="Thực phẩm bảo vệ sức khỏe">
+                  <option value="Vitamin & Khoáng chất"></option>
+                  <option value="Dược mỹ phẩm điều trị">
+                  <option value="Thiết bị & Dụng cụ y tế"></option>
+                  <option value="Chăm sóc sức khỏe gia đình"></option>
+                  <option value="Dược liệu - Đông y"></option>
+                </datalist>
+              </div>
+              <div class="form-group col-6">
+                <label for="pharma-prod-price">Giá bán (VND)</label>
+                <input type="text" id="pharma-prod-price" value="150.000" inputmode="decimal">
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="pharma-prod-details">Thành phần / Công dụng / Ghi chú</label>
+              <textarea id="pharma-prod-details" rows="4" placeholder="Nhập hoạt chất chính, hàm lượng, quy cách đóng gói, chỉ định hoặc ghi chú để AI viết bài chuẩn xác..."></textarea>
+            </div>
+            
+            <!-- Reference Image Input -->
+            <div class="form-group">
+              <label for="pharma-ref-image">Ảnh sản phẩm tham chiếu</label>
+              <div class="image-dropzone" id="pharma-image-dropzone">
+                <input type="file" id="pharma-ref-image" accept="image/*" style="display:none">
+                <button type="button" class="dropzone-text" id="pharma-dropzone-text" aria-label="Chọn ảnh sản phẩm tham chiếu Pharma">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8" cy="8" r="1.5"/><path d="m3 17 5-5 4 4 4-6 5 7"/></svg>
+                  <strong>Chọn ảnh hoặc kéo thả vào đây</strong><span>Ảnh mẫu được gửi cùng prompt 1</span>
+                </button>
+                <div class="preview-container" id="pharma-preview-container" style="display:none">
+                  <img id="pharma-img-preview" src="" alt="Ảnh sản phẩm tham chiếu Pharma đã chọn">
+                  <button id="pharma-btn-remove-img" class="btn-remove" aria-label="Gỡ ảnh tham chiếu Pharma">✕</button>
+                </div>
+              </div>
+            </div>
+            
+            <button id="pharma-btn-generate-content" class="btn primary w-full mt-3">Tạo bài viết bằng AI →</button>
+            <p class="desc-text text-center mt-2">Dùng Gemini 3.8 Flash sinh bài viết chuẩn SEO cho Website Pharma.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Center Column: Content & 4 Image Prompts -->
+      <section class="workspace-section col-center" aria-labelledby="pharma-article-section-title">
+        <div class="card glass flex-grow flex-col">
+          <div class="card-header flex-row justify-between">
+            <div><span class="section-index" aria-hidden="true">02</span><h2 id="pharma-article-section-title">Bài viết website</h2></div>
+            <div class="card-actions"><button id="pharma-btn-copy-content" class="btn text-btn">Sao chép</button></div>
+          </div>
+          <div class="card-body flex-grow flex-col">
+            <label for="pharma-article-content" class="sr-only">Nội dung bài viết website Pharma</label>
+            <textarea id="pharma-article-content" class="article-textarea flex-grow" placeholder="Bài viết Pharma sẽ xuất hiện tại đây...&#10;&#10;Sau khi AI tạo, bạn có thể chỉnh sửa tự do trước khi gửi sang Notion."></textarea>
+          </div>
+        </div>
+
+        <!-- 4 Image Prompts Section -->
+        <div class="card glass mt-4 prompts-card">
+          <div class="card-header">
+            <span class="section-index" aria-hidden="true">03</span><h2>Đổi ảnh sản phẩm</h2>
+          </div>
+          <div class="card-body flex-grow">
+            <p class="desc-text mb-3">Đã gom prompt chung cho cả 4 ảnh (phím 1–4). Bạn có thể bấm [Sinh ảnh] từng prompt hoặc tự chỉnh sửa lệnh.</p>
+            
+            <div class="target-folder-container mb-3">
+              <span class="folder-label">Thư mục lưu ảnh 1–4:</span>
+              <span class="folder-path" id="pharma-target-folder-disp">Chưa chọn thư mục gốc</span>
+            </div>
+
+            <!-- Collapsible Prompts Accordion for Pharma -->
+            <div class="prompts-accordion">
+              <!-- Collapsible Prompt 1 -->
+              <div class="prompt-collapse-item">
+                <div class="prompt-toolbar">
+                  <button type="button" class="prompt-collapse-header" id="pharma-prompt-header-1" aria-expanded="false" aria-controls="pharma-prompt-content-1">
+                    <span class="header-left">
+                      <span class="prompt-num">1</span>
+                      <span class="prompt-title-text" id="pharma-prompt-title-disp-1">Ảnh 1: Cover Bán Hàng & Insight</span>
+                    </span>
+                    <span class="collapse-icon" aria-hidden="true">⌄</span>
+                  </button>
+                  <button class="btn accent pharma-btn-generate-single" id="pharma-btn-generate-single-1" data-pharma-index="1" disabled>Sinh ảnh 1</button>
+                </div>
+                <div class="prompt-collapse-content" id="pharma-prompt-content-1">
+                  <div class="form-group">
+                    <label for="pharma-prompt-title-1">Tiêu đề hiển thị</label>
+                    <input type="text" id="pharma-prompt-title-1" placeholder="Nhập tiêu đề...">
+                  </div>
+                  <div class="form-group">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                      <label for="pharma-prompt-1">Nội dung prompt</label>
+                      <button class="btn text-btn pharma-btn-toggle-expand-prompt" data-pharma-index="1" aria-expanded="false" aria-controls="pharma-prompt-1">Phóng to</button>
+                    </div>
+                    <textarea id="pharma-prompt-1" rows="5" placeholder="Nhập mô tả prompt tạo ảnh cover..."></textarea>
+                  </div>
+                  <div style="display:flex; justify-content:flex-end; gap: 10px;">
+                    <button type="button" class="btn text-btn pharma-btn-reset-prompt" data-pharma-index="1">Khôi phục mặc định</button>
+                    <button class="btn secondary pharma-btn-save-prompt" data-pharma-index="1">Lưu prompt 1</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Collapsible Prompt 2 -->
+              <div class="prompt-collapse-item mt-2">
+                <div class="prompt-toolbar">
+                  <button type="button" class="prompt-collapse-header" id="pharma-prompt-header-2" aria-expanded="false" aria-controls="pharma-prompt-content-2">
+                    <span class="header-left">
+                      <span class="prompt-num">2</span>
+                      <span class="prompt-title-text" id="pharma-prompt-title-disp-2">Ảnh 2: Infographic Thành Phần</span>
+                    </span>
+                    <span class="collapse-icon" aria-hidden="true">⌄</span>
+                  </button>
+                  <button class="btn accent pharma-btn-generate-single" id="pharma-btn-generate-single-2" data-pharma-index="2" disabled>Sinh ảnh 2</button>
+                </div>
+                <div class="prompt-collapse-content" id="pharma-prompt-content-2">
+                  <div class="form-group">
+                    <label for="pharma-prompt-title-2">Tiêu đề hiển thị</label>
+                    <input type="text" id="pharma-prompt-title-2" placeholder="Nhập tiêu đề...">
+                  </div>
+                  <div class="form-group">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                      <label for="pharma-prompt-2">Nội dung prompt</label>
+                      <button class="btn text-btn pharma-btn-toggle-expand-prompt" data-pharma-index="2" aria-expanded="false" aria-controls="pharma-prompt-2">Phóng to</button>
+                    </div>
+                    <textarea id="pharma-prompt-2" rows="5" placeholder="Nhập mô tả prompt tạo ảnh thành phần..."></textarea>
+                  </div>
+                  <div style="display:flex; justify-content:flex-end; gap: 10px;">
+                    <button type="button" class="btn text-btn pharma-btn-reset-prompt" data-pharma-index="2">Khôi phục mặc định</button>
+                    <button class="btn secondary pharma-btn-save-prompt" data-pharma-index="2">Lưu prompt 2</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Collapsible Prompt 3 -->
+              <div class="prompt-collapse-item mt-2">
+                <div class="prompt-toolbar">
+                  <button type="button" class="prompt-collapse-header" id="pharma-prompt-header-3" aria-expanded="false" aria-controls="pharma-prompt-content-3">
+                    <span class="header-left">
+                      <span class="prompt-num">3</span>
+                      <span class="prompt-title-text" id="pharma-prompt-title-disp-3">Ảnh 3: Infographic Công Dụng</span>
+                    </span>
+                    <span class="collapse-icon" aria-hidden="true">⌄</span>
+                  </button>
+                  <button class="btn accent pharma-btn-generate-single" id="pharma-btn-generate-single-3" data-pharma-index="3" disabled>Sinh ảnh 3</button>
+                </div>
+                <div class="prompt-collapse-content" id="pharma-prompt-content-3">
+                  <div class="form-group">
+                    <label for="pharma-prompt-title-3">Tiêu đề hiển thị</label>
+                    <input type="text" id="pharma-prompt-title-3" placeholder="Nhập tiêu đề...">
+                  </div>
+                  <div class="form-group">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                      <label for="pharma-prompt-3">Nội dung prompt</label>
+                      <button class="btn text-btn pharma-btn-toggle-expand-prompt" data-pharma-index="3" aria-expanded="false" aria-controls="pharma-prompt-3">Phóng to</button>
+                    </div>
+                    <textarea id="pharma-prompt-3" rows="5" placeholder="Nhập mô tả prompt tạo ảnh công dụng..."></textarea>
+                  </div>
+                  <div style="display:flex; justify-content:flex-end; gap: 10px;">
+                    <button type="button" class="btn text-btn pharma-btn-reset-prompt" data-pharma-index="3">Khôi phục mặc định</button>
+                    <button class="btn secondary pharma-btn-save-prompt" data-pharma-index="3">Lưu prompt 3</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Collapsible Prompt 4 -->
+              <div class="prompt-collapse-item mt-2">
+                <div class="prompt-toolbar">
+                  <button type="button" class="prompt-collapse-header" id="pharma-prompt-header-4" aria-expanded="false" aria-controls="pharma-prompt-content-4">
+                    <span class="header-left">
+                      <span class="prompt-num">4</span>
+                      <span class="prompt-title-text" id="pharma-prompt-title-disp-4">Ảnh 4: Infographic Hướng Dẫn/Routine</span>
+                    </span>
+                    <span class="collapse-icon" aria-hidden="true">⌄</span>
+                  </button>
+                  <button class="btn accent pharma-btn-generate-single" id="pharma-btn-generate-single-4" data-pharma-index="4" disabled>Sinh ảnh 4</button>
+                </div>
+                <div class="prompt-collapse-content" id="pharma-prompt-content-4">
+                  <div class="form-group">
+                    <label for="pharma-prompt-title-4">Tiêu đề hiển thị</label>
+                    <input type="text" id="pharma-prompt-title-4" placeholder="Nhập tiêu đề...">
+                  </div>
+                  <div class="form-group">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                      <label for="pharma-prompt-4">Nội dung prompt</label>
+                      <button class="btn text-btn pharma-btn-toggle-expand-prompt" data-pharma-index="4" aria-expanded="false" aria-controls="pharma-prompt-4">Phóng to</button>
+                    </div>
+                    <textarea id="pharma-prompt-4" rows="5" placeholder="Nhập mô tả prompt tạo ảnh hướng dẫn..."></textarea>
+                  </div>
+                  <div style="display:flex; justify-content:flex-end; gap: 10px;">
+                    <button type="button" class="btn text-btn pharma-btn-reset-prompt" data-pharma-index="4">Khôi phục mặc định</button>
+                    <button class="btn secondary pharma-btn-save-prompt" data-pharma-index="4">Lưu prompt 4</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="card-footer notion-footer">
+            <p class="desc-text">Notion: <strong>Content đang làm</strong> · Facebook: <strong>Chưa đăng</strong></p>
+            <button id="pharma-btn-push-notion" class="btn accent big-btn">Đẩy bài lên Notion <span aria-hidden="true">↗</span></button>
           </div>
         </div>
       </section>

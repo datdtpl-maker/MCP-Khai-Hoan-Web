@@ -1,7 +1,7 @@
 {
   "name": "mcp-khaihoanderma",
   "version": "1.0.0",
-  "description": "MCP Khaihoanderma - Tự động hóa viết bài sản phẩm, tạo ảnh ChatGPT và cập nhật Notion",
+  "description": "MCP Khải Hoàn Web - Tự động hóa viết bài sản phẩm, tạo ảnh ChatGPT và cập nhật Notion",
   "main": "main.js",
   "bin": "server.js",
   "scripts": {
@@ -30,7 +30,7 @@
   },
   "build": {
     "appId": "com.khaihoan.mcpkhaihoanderma",
-    "productName": "MCP Khải Hoàn Derma",
+    "productName": "MCP Khải Hoàn Web",
     "publish": null,
     "directories": {
       "output": "dist-electron"
@@ -51,7 +51,7 @@
       "uninstallerIcon": "public/favicon.ico",
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "shortcutName": "MCP Khải Hoàn Derma"
+      "shortcutName": "MCP Khải Hoàn Web"
     },
     "files": [
       "main.js",
