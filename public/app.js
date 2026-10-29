@@ -1276,7 +1276,8 @@ Thiết kế hiện đại, rõ ràng, dễ đọc trên điện thoại, ngôn 
             details,
             content,
             referenceImage: index === "1" ? referenceImageBase64 : null,
-            logoImageUrl: logoImageUrlInput.value.trim()
+            logoImageUrl: logoImageUrlInput.value.trim(),
+            siteType: "derma"
           })
         });
         const data = await res.json();

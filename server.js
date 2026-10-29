@@ -1150,6 +1150,7 @@ async function resolveDriveFolderUrl(folderPath, suppliedParentUrl, productName)
   return null;
 }
 
+const DERMA_COORDINATION_DATA_SOURCE_ID = "4dcd280a-9505-49fb-9b63-33407108603a";
 // Helper: Query coordination page by title
 async function findCoordinationPageByTitle(notion, productName, coordinationDbId = DERMA_COORDINATION_DATABASE_ID) {
   const response = await notion.databases.query({
@@ -1230,7 +1231,7 @@ app.post("/api/chrome/generate-single-image", async (req, res) => {
     }
 
     // Start background single image automation
-    runSingleImageAutomationInBackground(port, refImagePath, logoImagePath, promptText, startIndex, targetFolder, productName, driveUrl, details, content)
+    runSingleImageAutomationInBackground(port, refImagePath, logoImagePath, promptText, startIndex, targetFolder, productName, driveUrl, details, content, siteType)
       .then(savedPath => { job.completed = [startIndex]; job.savedPath = savedPath; job.status = 'completed'; addLog(`Đã lưu ảnh ${startIndex}. Bạn có thể tự bấm prompt tiếp theo.`, 'success'); })
       .catch(error => { job.status = 'failed'; job.error = error.message; addLog(`Tạo ảnh ${startIndex} đã dừng: ${error.message}`, 'error'); });
 
@@ -1251,7 +1252,7 @@ app.post("/api/chrome/generate-single-image", async (req, res) => {
 });
 
 // Run single image Playwright automation in background
-async function runSingleImageAutomationInBackground(port, refImagePath, logoImagePath, promptText, promptIndex, targetFolder, productName, driveUrl, details, content) {
+async function runSingleImageAutomationInBackground(port, refImagePath, logoImagePath, promptText, promptIndex, targetFolder, productName, driveUrl, details, content, siteType = "derma") {
   addLog(`[Ảnh ${promptIndex}] Đang kết nối đến Chrome Debugging Port ${port}...`, "info");
   let browser;
   try {
@@ -1418,7 +1419,7 @@ async function runSingleImageAutomationInBackground(port, refImagePath, logoImag
         } else {
           addLog(`[Ảnh ${promptIndex}] Tạo mới trang điều phối với trạng thái "Content đang làm" trên Notion...`, "info");
           await notion.pages.create({
-            parent: { database_id: coordinationDbId },
+            parent: siteType === "pharma" ? { database_id: targetCoordinationDbId } : { data_source_id: DERMA_COORDINATION_DATA_SOURCE_ID },
             properties: {
               "Tên sản phẩm": {
                 title: [
