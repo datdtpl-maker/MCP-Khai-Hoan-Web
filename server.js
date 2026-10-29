@@ -96,6 +96,7 @@ const LEGACY_CONFIG_PATH = isElectron
   ? path.join(process.env.APPDATA || appDir, "Programs", "NotionProductCreator", "config.json")
   : null;
 const SAFE_STORAGE_PREFIX = "electron-safe-storage:v1:";
+const { BUNDLED_DEFAULTS } = require("./lib/bundled-defaults");
 const SECRET_CONFIG_FIELDS = [
   "geminiApiKey",
   "openAiApiKey",
@@ -105,25 +106,13 @@ const SECRET_CONFIG_FIELDS = [
   "googleDriveRefreshToken"
 ];
 const CONFIG_DEFAULTS = {
-  geminiApiKey: "",
-  openAiApiKey: "",
+  ...BUNDLED_DEFAULTS,
   geminiModel: DEFAULT_GEMINI_MODEL,
-  notionApiKey: "",
-  defaultDriveParent: "",
-  googleDriveParentUrl: "",
-  logoImageUrl: "https://drive.google.com/file/d/1N3ushR0ex_Nkr1hH9FkcaJnP90TStp60/view",
-  pharmaDefaultDriveParent: "G:\\My Drive\\Brief Khải Hoàn Pharma\\Ảnh đăng WEB",
-  pharmaGoogleDriveParentUrl: "https://drive.google.com/drive/u/2/folders/1u1IM5faDa2hr53xq64m58jB8Z6gCkvfp",
-  pharmaLogoImageUrl: "https://drive.google.com/file/d/1v1EP8Cm1YhZNCj27mDVomiRhHfItvB5e/view?usp=drive_link",
-  googleDriveClientId: "",
-  googleDriveClientSecret: "",
   googleDriveAccessToken: "",
   googleDriveRefreshToken: "",
   googleDriveTokenExpiry: 0,
   chromeDebugPort: 9222,
   chromeUserDataDir: path.join(configDir, "chatgpt_profile"),
-  facebookPageUrl: "",
-  facebookMediaParent: "",
   facebookTemplate: "",
   facebookPrompts: [{ ...DEFAULT_FACEBOOK_PROMPT }],
   selectedFacebookPromptId: DEFAULT_FACEBOOK_PROMPT.id,
