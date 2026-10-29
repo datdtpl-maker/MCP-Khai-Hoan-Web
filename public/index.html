@@ -78,26 +78,59 @@
               <button id="btn-save-key" class="btn secondary w-full">Lưu API Keys trên máy này</button>
             </div>
             <div class="storage-settings">
-            <h3 class="settings-section-title">Thư mục & nhận diện</h3>
-            <div class="form-group">
-              <label for="drive-parent">Thư mục gốc sản phẩm & ảnh</label>
-              <div class="input-with-button">
-                <input type="text" id="drive-parent" readonly placeholder="Chọn thư mục sản phẩm...">
-                <button id="btn-select-folder" class="btn secondary">Duyệt</button>
+              <div class="storage-header-row">
+                <h3 class="settings-section-title" style="margin-bottom:0;">Thư mục &amp; nhận diện</h3>
+                <div class="storage-tab-pills" role="tablist" aria-label="Chọn cấu hình thư mục">
+                  <button type="button" class="storage-pill-btn active" id="storage-pill-derma" data-storage-pane="derma" role="tab" aria-selected="true">Website Derma</button>
+                  <button type="button" class="storage-pill-btn" id="storage-pill-pharma" data-storage-pane="pharma" role="tab" aria-selected="false">Website Pharma</button>
+                </div>
               </div>
-            </div>
-            <div class="form-group">
-              <label for="product-drive-url">Link Google Drive thư mục cha</label>
-              <input type="url" id="product-drive-url" placeholder="Dán link thư mục cha chứa các thư mục sản phẩm">
-              <button id="btn-save-drive-parent-url" type="button" class="btn secondary w-full mt-2">Lưu link thư mục cha trên máy này</button>
-              <p class="desc-text">Tool tìm thư mục con theo tên sản phẩm trên máy và lấy đúng link media của thư mục con. Không dùng link <code>local_unsynced</code>.</p>
-            </div>
-            <div class="form-group">
-              <label for="logo-image-url">Link hình logo dùng cho 4 ảnh</label>
-              <input type="url" id="logo-image-url" placeholder="Dán link file logo trên Google Drive">
-              <button id="btn-save-logo-image-url" type="button" class="btn secondary w-full mt-2">Lưu link hình logo</button>
-              <p class="desc-text">Gửi logo cùng ảnh mẫu ở prompt 1, dùng lại trong prompt 2–4. Logo ở góc trên bên phải, cách mép và không che chữ.</p>
-            </div>
+
+              <!-- Derma Storage Settings -->
+              <div id="storage-pane-derma" class="storage-pane">
+                <div class="form-group">
+                  <label for="drive-parent">Thư mục gốc sản phẩm &amp; ảnh (Derma)</label>
+                  <div class="input-with-button">
+                    <input type="text" id="drive-parent" readonly placeholder="Chọn thư mục sản phẩm Derma...">
+                    <button id="btn-select-folder" class="btn secondary">Duyệt</button>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label for="product-drive-url">Link Google Drive thư mục cha (Derma)</label>
+                  <input type="url" id="product-drive-url" placeholder="Dán link thư mục cha Derma trên Google Drive">
+                  <button id="btn-save-drive-parent-url" type="button" class="btn secondary w-full mt-2">Lưu link thư mục cha trên máy này</button>
+                  <p class="desc-text">Tool tìm thư mục con theo tên sản phẩm trên máy và lấy đúng link media của thư mục con. Không dùng link <code>local_unsynced</code>.</p>
+                </div>
+                <div class="form-group">
+                  <label for="logo-image-url">Link hình logo dùng cho 4 ảnh (Derma)</label>
+                  <input type="url" id="logo-image-url" placeholder="Dán link file logo Derma trên Google Drive">
+                  <button id="btn-save-logo-image-url" type="button" class="btn secondary w-full mt-2">Lưu link hình logo</button>
+                  <p class="desc-text">Gửi logo cùng ảnh mẫu ở prompt 1, dùng lại trong prompt 2–4. Logo ở góc trên bên phải, cách mép và không che chữ.</p>
+                </div>
+              </div>
+
+              <!-- Pharma Storage Settings -->
+              <div id="storage-pane-pharma" class="storage-pane" hidden>
+                <div class="form-group">
+                  <label for="pharma-drive-parent">Thư mục gốc sản phẩm &amp; ảnh (Pharma)</label>
+                  <div class="input-with-button">
+                    <input type="text" id="pharma-drive-parent" readonly placeholder="G:\\My Drive\\Brief Khải Hoàn Pharma\\Ảnh đăng WEB">
+                    <button id="pharma-btn-select-folder" class="btn secondary">Duyệt</button>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label for="pharma-product-drive-url">Link Google Drive thư mục cha (Pharma)</label>
+                  <input type="url" id="pharma-product-drive-url" placeholder="https://drive.google.com/drive/u/2/folders/1u1IM5faDa2hr53xq64m58jB8Z6gCkvfp">
+                  <button id="pharma-btn-save-drive-parent-url" type="button" class="btn secondary w-full mt-2">Lưu link thư mục cha Pharma</button>
+                  <p class="desc-text">Tool tìm thư mục con theo tên sản phẩm trên máy và lấy đúng link media của thư mục con.</p>
+                </div>
+                <div class="form-group">
+                  <label for="pharma-logo-image-url">Link hình logo dùng cho 4 ảnh (Pharma)</label>
+                  <input type="url" id="pharma-logo-image-url" placeholder="https://drive.google.com/file/d/1v1EP8Cm1YhZNCj27mDVomiRhHfItvB5e/view?usp=drive_link">
+                  <button id="pharma-btn-save-logo-image-url" type="button" class="btn secondary w-full mt-2">Lưu link hình logo Pharma</button>
+                  <p class="desc-text">Logo tròn đường viền Khải Hoàn Pharma đính kèm cùng ảnh ở prompt 1 và dùng lại ở prompt 2–4.</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -313,7 +346,7 @@
           </div> <!-- Close prompts-accordion -->
           </div> <!-- Close card-body flex-grow -->
           <div class="card-footer notion-footer">
-            <p class="desc-text">Notion: <strong>Content đang làm</strong> · Facebook: <strong>Chưa đăng</strong></p>
+            <p class="desc-text">Notion: <strong>Content đang làm</strong> (Website Pharma)</p>
             <button id="btn-push-notion" class="btn accent big-btn">Đẩy bài lên Notion <span aria-hidden="true">↗</span></button>
           </div>
         </div>

@@ -111,6 +111,9 @@ const CONFIG_DEFAULTS = {
   defaultDriveParent: "",
   googleDriveParentUrl: "",
   logoImageUrl: "https://drive.google.com/file/d/1N3ushR0ex_Nkr1hH9FkcaJnP90TStp60/view",
+  pharmaDefaultDriveParent: "G:\\My Drive\\Brief Khải Hoàn Pharma\\Ảnh đăng WEB",
+  pharmaGoogleDriveParentUrl: "https://drive.google.com/drive/u/2/folders/1u1IM5faDa2hr53xq64m58jB8Z6gCkvfp",
+  pharmaLogoImageUrl: "https://drive.google.com/file/d/1v1EP8Cm1YhZNCj27mDVomiRhHfItvB5e/view?usp=drive_link",
   googleDriveClientId: "",
   googleDriveClientSecret: "",
   googleDriveAccessToken: "",
@@ -474,6 +477,10 @@ app.post("/api/config", async (req, res) => {
       if (submittedLogoUrl && !getGoogleDriveFileId(submittedLogoUrl)) {
         throw new Error("Link logo phải là link file Google Drive hợp lệ dạng drive.google.com/file/d/...");
       }
+      const submittedPharmaLogoUrl = typeof newCfg.pharmaLogoImageUrl === "string" ? newCfg.pharmaLogoImageUrl.trim() : "";
+      if (submittedPharmaLogoUrl && !getGoogleDriveFileId(submittedPharmaLogoUrl)) {
+        throw new Error("Link logo Pharma phải là link file Google Drive hợp lệ dạng drive.google.com/file/d/...");
+      }
       const next = { ...cfg, ...newCfg };
       next.geminiApiKey = submittedAiKey || cfg.geminiApiKey || cfg.openAiApiKey || "";
       next.openAiApiKey = submittedAiKey || cfg.openAiApiKey || cfg.geminiApiKey || "";
@@ -508,9 +515,19 @@ app.post("/api/config", async (req, res) => {
 
 async function saveGoogleDriveParentUrl(req, res) {
   try {
-    const googleDriveParentUrl = String(req.body?.googleDriveParentUrl || "").trim();
-    const config = await updateConfig((current) => ({ ...current, googleDriveParentUrl }));
-    res.json({ success: true, googleDriveParentUrl: config.googleDriveParentUrl });
+    const siteType = req.body?.siteType;
+    const url = String(req.body?.googleDriveParentUrl || req.body?.url || "").trim();
+    const config = await updateConfig((current) => {
+      if (siteType === "pharma") {
+        return { ...current, pharmaGoogleDriveParentUrl: url };
+      }
+      return { ...current, googleDriveParentUrl: url };
+    });
+    res.json({
+      success: true,
+      googleDriveParentUrl: siteType === "pharma" ? config.pharmaGoogleDriveParentUrl : config.googleDriveParentUrl,
+      pharmaGoogleDriveParentUrl: config.pharmaGoogleDriveParentUrl
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -521,12 +538,22 @@ app.post("/api/config/google-drive-parent", saveGoogleDriveParentUrl);
 
 async function saveLogoImageUrl(req, res) {
   try {
+    const siteType = req.body?.siteType;
     const logoImageUrl = String(req.body?.logoImageUrl || "").trim();
     if (logoImageUrl && !getGoogleDriveFileId(logoImageUrl)) {
       return res.status(400).json({ error: "Link logo phải là link file Google Drive hợp lệ dạng drive.google.com/file/d/..." });
     }
-    const config = await updateConfig((current) => ({ ...current, logoImageUrl }));
-    res.json({ success: true, logoImageUrl: config.logoImageUrl });
+    const config = await updateConfig((current) => {
+      if (siteType === "pharma") {
+        return { ...current, pharmaLogoImageUrl: logoImageUrl };
+      }
+      return { ...current, logoImageUrl };
+    });
+    res.json({
+      success: true,
+      logoImageUrl: siteType === "pharma" ? config.pharmaLogoImageUrl : config.logoImageUrl,
+      pharmaLogoImageUrl: config.pharmaLogoImageUrl
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -1187,7 +1214,7 @@ app.post("/api/chrome/generate-single-image", async (req, res) => {
       addLog(`[Image ${promptIndex}] Continuing the current chat with text only; the product image is not uploaded again.`, "info");
     }
 
-    const effectiveLogoUrl = String(logoImageUrl || config.logoImageUrl || "").trim();
+    const effectiveLogoUrl = typeof logoImageUrl === "string" ? logoImageUrl.trim() : "";
     let logoImagePath = null;
     if (effectiveLogoUrl) {
       addLog(`[Ảnh ${promptIndex}] Đang tải logo thương hiệu từ Google Drive...`, "info");
@@ -1451,11 +1478,7 @@ const COORDINATION_DATABASE_ID = DERMA_COORDINATION_DATABASE_ID;
 app.get("/api/facebook/pending-products", async (req, res) => {
   try {
     const notion = await getNotionClient();
-    const [dermaProducts, pharmaProducts] = await Promise.all([
-      listFacebookProductsByStatus(notion, DERMA_COORDINATION_DATABASE_ID, "Chưa đăng"),
-      listFacebookProductsByStatus(notion, PHARMA_COORDINATION_DATABASE_ID, "Chưa đăng").catch(() => [])
-    ]);
-    const products = [...dermaProducts, ...pharmaProducts].sort((a, b) => a.productName.localeCompare(b.productName, "vi"));
+    const products = await listFacebookProductsByStatus(notion, DERMA_COORDINATION_DATABASE_ID, "Chưa đăng");
     res.json({ products });
   } catch (err) {
     res.status(500).json({ error: `Không thể quét danh sách Notion: ${err.message}` });
@@ -1465,11 +1488,7 @@ app.get("/api/facebook/pending-products", async (req, res) => {
 app.get("/api/facebook/waiting-products", async (req, res) => {
   try {
     const notion = await getNotionClient();
-    const [dermaProducts, pharmaProducts] = await Promise.all([
-      listFacebookProductsByStatus(notion, DERMA_COORDINATION_DATABASE_ID, "Chờ đăng"),
-      listFacebookProductsByStatus(notion, PHARMA_COORDINATION_DATABASE_ID, "Chờ đăng").catch(() => [])
-    ]);
-    const products = [...dermaProducts, ...pharmaProducts].sort((a, b) => a.productName.localeCompare(b.productName, "vi"));
+    const products = await listFacebookProductsByStatus(notion, DERMA_COORDINATION_DATABASE_ID, "Chờ đăng");
     res.json({ products });
   } catch (err) {
     res.status(500).json({ error: `Không thể quét bài Facebook Chờ đăng: ${err.message}` });
@@ -1688,9 +1707,23 @@ app.post("/api/notion/sync", async (req, res) => {
     let coordinationPageId;
     if (existingPage) {
       addLog(`Tìm thấy trang điều phối hiện tại (ID: ${existingPage.id}). Đang cập nhật trạng thái "Content đang làm"...`, "info");
-      const updatedPage = await notion.pages.update({
-        page_id: existingPage.id,
-        properties: {
+      const coordinationUpdateProps = {
+        "Từ khóa SEO Rank Math": {
+          rich_text: [
+            {
+              text: { content: finalKeywords }
+            }
+          ]
+        },
+        "Media sản phẩm": {
+          url: finalDriveUrl
+        },
+        "Trạng thái": {
+          select: {
+            name: "Content đang làm"
+          }
+        },
+        ...(siteType === "pharma" ? {} : {
           "Bài content Tây": {
             relation: [
               {
@@ -1698,44 +1731,47 @@ app.post("/api/notion/sync", async (req, res) => {
               }
             ]
           },
-          "Từ khóa SEO Rank Math": {
-            rich_text: [
-              {
-                text: { content: finalKeywords }
-              }
-            ]
-          },
-          "Media sản phẩm": {
-            url: finalDriveUrl
-          },
-          "Trạng thái": {
-            select: {
-              name: "Content đang làm"
-            }
-          },
           "Facebook": {
             select: {
               name: "Chưa đăng"
             }
-          },
-          "Content xong": {
-            checkbox: true
           }
+        }),
+        "Content xong": {
+          checkbox: true
         }
+      };
+      const updatedPage = await notion.pages.update({
+        page_id: existingPage.id,
+        properties: coordinationUpdateProps
       });
       coordinationPageId = updatedPage.id;
     } else {
       addLog(`Không tìm thấy trang sẵn có. Đang tạo trang điều phối mới với trạng thái "Content đang làm"...`, "info");
-      const createdPage = await notion.pages.create({
-        parent: siteType === "pharma" ? { database_id: targetCoordinationDbId } : { data_source_id: coordinationDataSourceId },
-        properties: {
-          "Tên sản phẩm": {
-            title: [
-              {
-                text: { content: productName }
-              }
-            ]
-          },
+      const coordinationCreateProps = {
+        "Tên sản phẩm": {
+          title: [
+            {
+              text: { content: productName }
+            }
+          ]
+        },
+        "Từ khóa SEO Rank Math": {
+          rich_text: [
+            {
+              text: { content: finalKeywords }
+            }
+          ]
+        },
+        "Media sản phẩm": {
+          url: finalDriveUrl
+        },
+        "Trạng thái": {
+          select: {
+            name: "Content đang làm"
+          }
+        },
+        ...(siteType === "pharma" ? {} : {
           "Bài content Tây": {
             relation: [
               {
@@ -1743,30 +1779,19 @@ app.post("/api/notion/sync", async (req, res) => {
               }
             ]
           },
-          "Từ khóa SEO Rank Math": {
-            rich_text: [
-              {
-                text: { content: finalKeywords }
-              }
-            ]
-          },
-          "Media sản phẩm": {
-            url: finalDriveUrl
-          },
-          "Trạng thái": {
-            select: {
-              name: "Content đang làm"
-            }
-          },
           "Facebook": {
             select: {
               name: "Chưa đăng"
             }
-          },
-          "Content xong": {
-            checkbox: true
           }
+        }),
+        "Content xong": {
+          checkbox: true
         }
+      };
+      const createdPage = await notion.pages.create({
+        parent: siteType === "pharma" ? { database_id: targetCoordinationDbId } : { data_source_id: coordinationDataSourceId },
+        properties: coordinationCreateProps
       });
       coordinationPageId = createdPage.id;
     }

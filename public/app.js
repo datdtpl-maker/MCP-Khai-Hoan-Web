@@ -16,6 +16,16 @@ document.addEventListener("DOMContentLoaded", () => {
   const btnSaveDriveParentUrl = document.getElementById("btn-save-drive-parent-url");
   const logoImageUrlInput = document.getElementById("logo-image-url");
   const btnSaveLogoImageUrl = document.getElementById("btn-save-logo-image-url");
+  const pharmaDriveParentInput = document.getElementById("pharma-drive-parent");
+  const pharmaBtnSelectFolder = document.getElementById("pharma-btn-select-folder");
+  const pharmaProductDriveUrlInput = document.getElementById("pharma-product-drive-url");
+  const pharmaBtnSaveDriveParentUrl = document.getElementById("pharma-btn-save-drive-parent-url");
+  const pharmaLogoImageUrlInput = document.getElementById("pharma-logo-image-url");
+  const pharmaBtnSaveLogoImageUrl = document.getElementById("pharma-btn-save-logo-image-url");
+  const storagePillDerma = document.getElementById("storage-pill-derma");
+  const storagePillPharma = document.getElementById("storage-pill-pharma");
+  const storagePaneDerma = document.getElementById("storage-pane-derma");
+  const storagePanePharma = document.getElementById("storage-pane-pharma");
   const btnClearProductCache = document.getElementById("btn-clear-product-cache");
   const systemConfigCard = document.getElementById("system-config-card");
   const systemConfigBody = document.getElementById("system-config-body");
@@ -400,6 +410,20 @@ Thiết kế hiện đại, rõ ràng, dễ đọc trên điện thoại, ngôn 
     }
   }
 
+  function switchStoragePane(target) {
+    if (storagePillDerma && storagePillPharma) {
+      storagePillDerma.classList.toggle("active", target === "derma");
+      storagePillDerma.setAttribute("aria-selected", String(target === "derma"));
+      storagePillPharma.classList.toggle("active", target === "pharma");
+      storagePillPharma.setAttribute("aria-selected", String(target === "pharma"));
+    }
+    if (storagePaneDerma) storagePaneDerma.hidden = target !== "derma";
+    if (storagePanePharma) storagePanePharma.hidden = target !== "pharma";
+  }
+
+  if (storagePillDerma) storagePillDerma.addEventListener("click", () => switchStoragePane("derma"));
+  if (storagePillPharma) storagePillPharma.addEventListener("click", () => switchStoragePane("pharma"));
+
   // Load initial config
   async function loadConfig() {
     try {
@@ -426,6 +450,16 @@ Thiết kế hiện đại, rõ ràng, dễ đọc trên điện thoại, ngôn 
       driveParentInput.value = config.defaultDriveParent || "";
       productDriveUrlInput.value = config.googleDriveParentUrl || "";
       logoImageUrlInput.value = config.logoImageUrl || "";
+      if (pharmaDriveParentInput) {
+        pharmaDriveParentInput.value = config.pharmaDefaultDriveParent || "G:\\My Drive\\Brief Khải Hoàn Pharma\\Ảnh đăng WEB";
+      }
+      if (pharmaProductDriveUrlInput) {
+        pharmaProductDriveUrlInput.value = config.pharmaGoogleDriveParentUrl || "https://drive.google.com/drive/u/2/folders/1u1IM5faDa2hr53xq64m58jB8Z6gCkvfp";
+      }
+      if (pharmaLogoImageUrlInput) {
+        pharmaLogoImageUrlInput.value = config.pharmaLogoImageUrl || "https://drive.google.com/file/d/1v1EP8Cm1YhZNCj27mDVomiRhHfItvB5e/view?usp=drive_link";
+      }
+      updatePharmaTargetFolderDisplay();
       lastSavedGoogleDriveParentUrl = productDriveUrlInput.value.trim();
       facebookPageUrlInput.value = config.facebookPageUrl || "";
       facebookMediaParentInput.value = config.facebookMediaParent || config.defaultDriveParent || "";
@@ -479,6 +513,9 @@ Thiết kế hiện đại, rõ ràng, dễ đọc trên điện thoại, ngôn 
       defaultDriveParent: driveParentInput.value.trim(),
       googleDriveParentUrl: productDriveUrlInput.value.trim(),
       logoImageUrl: logoImageUrlInput.value.trim(),
+      pharmaDefaultDriveParent: pharmaDriveParentInput ? pharmaDriveParentInput.value.trim() : "",
+      pharmaGoogleDriveParentUrl: pharmaProductDriveUrlInput ? pharmaProductDriveUrlInput.value.trim() : "",
+      pharmaLogoImageUrl: pharmaLogoImageUrlInput ? pharmaLogoImageUrlInput.value.trim() : "",
       facebookPageUrl: facebookPageUrlInput.value.trim(),
       facebookMediaParent: facebookMediaParentInput.value.trim(),
       facebookTemplate: facebookTemplateInput.value.trim(),
@@ -835,7 +872,9 @@ Thiết kế hiện đại, rõ ràng, dễ đọc trên điện thoại, ngôn 
   // Use the operating system's native dialog so users can choose any disk or
   // mounted Google Drive folder on both Windows and macOS.
   async function openFolderPicker(target = "website") {
-    const input = target === "facebook" ? facebookMediaParentInput : driveParentInput;
+    let input = driveParentInput;
+    if (target === "facebook") input = facebookMediaParentInput;
+    else if (target === "pharma") input = pharmaDriveParentInput;
     try {
       const res = await fetch("/api/system/select-folder", {
         method: "POST",
@@ -849,6 +888,7 @@ Thiết kế hiện đại, rõ ràng, dễ đọc trên điện thoại, ngôn 
       input.value = data.path;
       await saveConfig();
       if (target === "website") updateTargetFolderDisplay();
+      if (target === "pharma") updatePharmaTargetFolderDisplay();
       appendLocalLog(`Đã chọn thư mục ${target === "facebook" ? "ảnh Facebook" : "sản phẩm & ảnh"}: ${data.path}`, "success");
     } catch (err) {
       appendLocalLog(err.message, "error");
@@ -857,6 +897,7 @@ Thiết kế hiện đại, rõ ràng, dễ đọc trên điện thoại, ngôn 
   }
 
   btnSelectFolder.addEventListener("click", () => openFolderPicker("website"));
+  if (pharmaBtnSelectFolder) pharmaBtnSelectFolder.addEventListener("click", () => openFolderPicker("pharma"));
   btnSelectFacebookMedia.addEventListener("click", () => openFolderPicker("facebook"));
 
   // --- Event Listeners ---
@@ -1340,6 +1381,7 @@ Thiết kế hiện đại, rõ ràng, dễ đọc trên điện thoại, ngôn 
         if (pharmaPanel) pharmaPanel.hidden = true;
         facebookPanel.hidden = true;
         if (sharedColRight) websitePanel.querySelector(".app-main").appendChild(sharedColRight);
+        switchStoragePane("derma");
         updateTargetFolderDisplay();
       } else if (target === "pharma") {
         document.querySelector('.skip-link').href = '#pharma-prod-name';
@@ -1347,6 +1389,7 @@ Thiết kế hiện đại, rõ ràng, dễ đọc trên điện thoại, ngôn 
         if (pharmaPanel) pharmaPanel.hidden = false;
         facebookPanel.hidden = true;
         if (sharedColRight) pharmaPanel.querySelector(".app-main").appendChild(sharedColRight);
+        switchStoragePane("pharma");
         updatePharmaTargetFolderDisplay();
       } else if (target === "facebook") {
         document.querySelector('.skip-link').href = '#facebook-pending-products';
@@ -1669,6 +1712,45 @@ Thiết kế hiện đại, rõ ràng, dễ đọc trên điện thoại, ngôn 
   
 
   // ==========================================
+
+  if (pharmaBtnSaveDriveParentUrl) {
+    pharmaBtnSaveDriveParentUrl.addEventListener("click", async () => {
+      const url = pharmaProductDriveUrlInput.value.trim();
+      try {
+        const res = await fetch("/api/config/google-drive-parent", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url, siteType: "pharma" })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        appendLocalLog("Đã lưu link Google Drive thư mục cha Pharma.", "success");
+        alert("Đã lưu link thư mục cha Pharma thành công!");
+      } catch (err) {
+        alert(`Lỗi: ${err.message}`);
+      }
+    });
+  }
+
+  if (pharmaBtnSaveLogoImageUrl) {
+    pharmaBtnSaveLogoImageUrl.addEventListener("click", async () => {
+      const logoImageUrl = pharmaLogoImageUrlInput.value.trim();
+      try {
+        const res = await fetch("/api/config/logo-image", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ logoImageUrl, siteType: "pharma" })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        appendLocalLog("Đã lưu link logo Pharma.", "success");
+        alert("Đã lưu link logo Pharma thành công!");
+      } catch (err) {
+        alert(`Lỗi: ${err.message}`);
+      }
+    });
+  }
+
   // WEBSITE PHARMA MODULE LOGIC
   // ==========================================
   const pharmaProdNameInput = document.getElementById("pharma-prod-name");
@@ -1692,7 +1774,7 @@ Thiết kế hiện đại, rõ ràng, dễ đọc trên điện thoại, ngôn 
 
   function updatePharmaTargetFolderDisplay() {
     if (!pharmaTargetFolderDisp || !pharmaProdNameInput) return;
-    const driveParent = driveParentInput.value.trim();
+    const driveParent = pharmaDriveParentInput ? pharmaDriveParentInput.value.trim() : "";
     const prodName = pharmaProdNameInput.value.trim();
     if (!driveParent) {
       pharmaTargetFolderDisp.textContent = "Chưa chọn thư mục gốc";
@@ -1794,7 +1876,7 @@ Thiết kế hiện đại, rõ ràng, dễ đọc trên điện thoại, ngôn 
       const details = pharmaProdDetailsInput.value.trim();
       const category = pharmaProdCategoryInput.value.trim();
       const price = pharmaProdPriceInput.value.trim();
-      const driveParent = driveParentInput.value.trim();
+      const driveParent = pharmaDriveParentInput ? pharmaDriveParentInput.value.trim() : "";
 
       if (!productName) {
         alert("Vui lòng nhập tên sản phẩm Pharma trước.");
@@ -1833,7 +1915,7 @@ Thiết kế hiện đại, rõ ràng, dễ đọc trên điện thoại, ngôn 
     pharmaBtnPushNotion.addEventListener("click", async () => {
       const productName = pharmaProdNameInput.value.trim();
       const content = pharmaArticleContent.value.trim();
-      const driveParent = driveParentInput.value.trim();
+      const driveParent = pharmaDriveParentInput ? pharmaDriveParentInput.value.trim() : "";
 
       if (!productName || !content) {
         alert("Vui lòng nhập Tên sản phẩm và Tạo nội dung bài viết trước.");
@@ -1858,7 +1940,7 @@ Thiết kế hiện đại, rõ ràng, dễ đọc trên điện thoại, ngôn 
             productName,
             content,
             driveParent,
-            driveUrl: productDriveUrlInput.value.trim() || pharmaCurrentProductDriveUrl,
+            driveUrl: (pharmaProductDriveUrlInput ? pharmaProductDriveUrlInput.value.trim() : "") || pharmaCurrentProductDriveUrl,
             siteType: "pharma"
           })
         });
@@ -1872,7 +1954,7 @@ Thiết kế hiện đại, rõ ràng, dễ đọc trên điện thoại, ngôn 
         showCompletionPopup({
           title: "Đã đẩy bài Website Pharma lên Notion",
           returnFocus: pharmaBtnPushNotion,
-          message: "Bài viết đã được lưu trên bảng điều phối Web KhaiHoanPharma. Trạng thái: Content đang làm; Facebook: Chưa đăng.",
+          message: "Bài viết đã được lưu trên bảng điều phối Web KhaiHoanPharma. Trạng thái: Content đang làm.",
           notionUrl: notionData.contentPageUrl,
           notionLabel: "Mở bài Website trên Notion"
         });
@@ -1947,7 +2029,7 @@ Thiết kế hiện đại, rõ ràng, dễ đọc trên điện thoại, ngôn 
       btnGen.addEventListener("click", async (e) => {
         e.stopPropagation();
         const productName = pharmaProdNameInput.value.trim();
-        const driveParent = driveParentInput.value.trim();
+        const driveParent = pharmaDriveParentInput ? pharmaDriveParentInput.value.trim() : "";
         const promptText = contentInput.value.trim();
         const details = pharmaProdDetailsInput.value.trim();
         const contentVal = pharmaArticleContent.value.trim();
@@ -1977,13 +2059,13 @@ Thiết kế hiện đại, rõ ràng, dễ đọc trên điện thoại, ngôn 
             body: JSON.stringify({
               productName,
               driveParent,
-              driveUrl: productDriveUrlInput.value.trim() || pharmaCurrentProductDriveUrl,
+              driveUrl: (pharmaProductDriveUrlInput ? pharmaProductDriveUrlInput.value.trim() : "") || pharmaCurrentProductDriveUrl,
               promptIndex: String(i),
               promptText,
               details,
               content: contentVal,
               referenceImage: i === 1 ? pharmaReferenceImageBase64 : null,
-              logoImageUrl: logoImageUrlInput.value.trim(),
+              logoImageUrl: (pharmaLogoImageUrlInput ? pharmaLogoImageUrlInput.value.trim() : ""),
               siteType: "pharma"
             })
           });
