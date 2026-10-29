@@ -1666,39 +1666,45 @@ app.post("/api/notion/sync", async (req, res) => {
     }
 
     // 1. Create page in "Công việc của Tây" database containing the Markdown blocks
-    addLog(`Đang tạo trang viết bài mới trong database "Công việc của Tây"...`, "info");
     const blocks = markdownToNotionBlocks(content);
+    let contentPage = null;
+    let contentPageId = null;
 
-    const contentPage = await notion.pages.create({
-      parent: { data_source_id: contentDataSourceId },
-      properties: {
-        "Tên tài liệu": {
-          title: [
-            {
-              text: { content: `${productName} WEB${siteType === "pharma" ? " PHARMA" : ""}` }
+    try {
+      addLog(`Đang tạo trang viết bài mới trong database "Công việc của Tây"...`, "info");
+      contentPage = await notion.pages.create({
+        parent: { data_source_id: contentDataSourceId },
+        properties: {
+          "Tên tài liệu": {
+            title: [
+              {
+                text: { content: `${productName} WEB${siteType === "pharma" ? " PHARMA" : ""}` }
+              }
+            ]
+          },
+          "Status": {
+            select: {
+              name: "Hoàn thành"
             }
-          ]
-        },
-        "Status": {
-          select: {
-            name: "Hoàn thành"
           }
+        },
+        children: blocks.slice(0, 100)
+      });
+
+      contentPageId = contentPage.id;
+      addLog(`Đã tạo trang Công việc của Tây thành công (ID: ${contentPageId})`, "success");
+
+      if (blocks.length > 100) {
+        addLog(`Đang tiếp tục thêm các block văn bản còn lại vào trang...`, "info");
+        for (let i = 100; i < blocks.length; i += 100) {
+          await notion.blocks.children.append({
+            block_id: contentPageId,
+            children: blocks.slice(i, i + 100)
+          });
         }
-      },
-      children: blocks.slice(0, 100)
-    });
-
-    const contentPageId = contentPage.id;
-    addLog(`Đã tạo trang Công việc của Tây thành công (ID: ${contentPageId})`, "success");
-
-    if (blocks.length > 100) {
-      addLog(`Đang tiếp tục thêm các block văn bản còn lại vào trang...`, "info");
-      for (let i = 100; i < blocks.length; i += 100) {
-        await notion.blocks.children.append({
-          block_id: contentPageId,
-          children: blocks.slice(i, i + 100)
-        });
       }
+    } catch (contentErr) {
+      addLog(`Cảnh báo lưu Công việc của Tây (chưa được share quyền): ${contentErr.message}`, "warning");
     }
 
     // 2. Create or Update coordination record in "Đăng sản phẩm đơn giản"
@@ -1792,8 +1798,17 @@ app.post("/api/notion/sync", async (req, res) => {
       };
       const createdPage = await notion.pages.create({
         parent: siteType === "pharma" ? { database_id: targetCoordinationDbId } : { data_source_id: coordinationDataSourceId },
-        properties: coordinationCreateProps
+        properties: coordinationCreateProps,
+        ...(siteType === "pharma" ? { children: blocks.slice(0, 100) } : {})
       });
+      if (siteType === "pharma" && blocks.length > 100) {
+        for (let i = 100; i < blocks.length; i += 100) {
+          await notion.blocks.children.append({
+            block_id: createdPage.id,
+            children: blocks.slice(i, i + 100)
+          });
+        }
+      }
       coordinationPageId = createdPage.id;
     }
 
@@ -1802,7 +1817,7 @@ app.post("/api/notion/sync", async (req, res) => {
 
     res.json({
       success: true,
-      contentPageUrl: contentPage.url,
+      contentPageUrl: contentPage?.url || null,
       coordinationPageId: coordinationPageId
     });
   } catch (err) {
@@ -1837,7 +1852,7 @@ function launchStandaloneBrowser(port) {
   }
   
   try {
-    const url = `http://localhost:${PORT}`;
+    const url = `http://localhost:${port}`;
     const localAppData = process.env.LOCALAPPDATA || path.join(process.env.USERPROFILE || "C:\\Users\\datdt", "AppData\\Local");
     const profileDir = path.join(localAppData, "NotionProductCreator", "app_profile");
     
