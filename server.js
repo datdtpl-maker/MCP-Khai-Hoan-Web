@@ -38,7 +38,7 @@ const {
   checkGeminiApiKey
 } = require("./lib/gemini-api");
 const { listFacebookProductsByStatus, markFacebookProductsAsPublished } = require("./lib/facebook-status");
-const { listNumberedImages, resolveProductImageFolder } = require("./lib/product-image-folder");
+const { listNumberedImages, resolveProductImageFolder, resolveTargetProductFolder } = require("./lib/product-image-folder");
 const { getGoogleDriveFileId, downloadGoogleDriveLogo } = require("./lib/logo-image");
 const { createApiClientPool } = require("./lib/api-client-pool");
 const { ensureChatGptComposer, fillChatGptPrompt } = require("./lib/chatgpt-composer");
@@ -1421,7 +1421,7 @@ async function runSingleImageAutomationInBackground(port, refImagePath, logoImag
         } else {
           addLog(`[Ảnh ${promptIndex}] Tạo mới trang điều phối với trạng thái "Content đang làm" trên Notion...`, "info");
           await notion.pages.create({
-            parent: siteType === "pharma" ? { database_id: targetCoordinationDbId } : { data_source_id: DERMA_COORDINATION_DATA_SOURCE_ID },
+            parent: { database_id: targetCoordinationDbId },
             properties: {
               "Tên sản phẩm": {
                 title: [
@@ -1606,15 +1606,18 @@ app.post("/api/facebook/publish", async (req, res) => {
       await notion.blocks.children.append({ block_id: facebookContentPage.id, children: facebookBlocks.slice(i, i + 100) });
     }
 
-    const currentRelations = record.properties["Bài content Tây"]?.relation || [];
-    const relatedContent = [...currentRelations, { id: facebookContentPage.id }]
-      .filter((relation, index, list) => list.findIndex((item) => item.id === relation.id) === index);
+    const fbUpdateProps = {
+      Facebook: { select: { name: "Chờ đăng" } }
+    };
+    if (record.properties && record.properties["Bài content Tây"]) {
+      const currentRelations = record.properties["Bài content Tây"].relation || [];
+      const relatedContent = [...currentRelations, { id: facebookContentPage.id }]
+        .filter((relation, index, list) => list.findIndex((item) => item.id === relation.id) === index);
+      fbUpdateProps["Bài content Tây"] = { relation: relatedContent };
+    }
     await notion.pages.update({
       page_id: record.id,
-      properties: {
-        "Bài content Tây": { relation: relatedContent },
-        Facebook: { select: { name: "Chờ đăng" } }
-      }
+      properties: fbUpdateProps
     });
     res.json({
       success: true,
@@ -1638,7 +1641,6 @@ app.post("/api/notion/sync", async (req, res) => {
   const contentDataSourceId = "22c70655-a9aa-80f5-a0b5-000b9dfd1d8b"; // Công việc của Tây
   const targetCoordinationDbId = siteType === "pharma" ? PHARMA_COORDINATION_DATABASE_ID : DERMA_COORDINATION_DATABASE_ID;
   const coordinationDbId = targetCoordinationDbId;
-  const coordinationDataSourceId = "4dcd280a-9505-49fb-9b63-33407108603a";
 
   addLog(`Đang khởi tạo kết nối Notion API...`, "info");
   
@@ -1655,25 +1657,23 @@ app.post("/api/notion/sync", async (req, res) => {
     const finalKeywords = await generateSeoKeywords(apiKey, productName, content, model);
     addLog(`Đã tạo từ khóa SEO: "${finalKeywords}"`, "success");
 
-    // Always resolve the product child folder. The optional URL in the form is
-    // the parent folder only and must never be written into Media sản phẩm.
     let finalDriveUrl = null;
     if (driveParent) {
       addLog(`Đang lấy Google Drive ID của thư mục sản phẩm để đồng bộ liên kết...`, "info");
-      const targetFolder = path.join(driveParent, productName.replace(/[\\/:*?"<>|]/g, ""));
+      const targetFolder = await resolveTargetProductFolder(driveParent, productName);
       finalDriveUrl = await resolveDriveFolderUrl(targetFolder, driveUrl, productName);
     }
     if (!finalDriveUrl) {
       throw new Error("Không tìm được thư mục con của sản phẩm trên Google Drive. Hãy kiểm tra tên thư mục, dán đúng link thư mục cha và bấm Kết nối Google Drive nếu metadata local bị thiếu.");
     }
 
-    // 1. Create page in "Công việc của Tây" database containing the Markdown blocks
+    // Convert markdown content to Notion blocks
     const blocks = markdownToNotionBlocks(content);
     let contentPage = null;
     let contentPageId = null;
 
+    // Optional legacy backup in "Công việc của Tây" if shared
     try {
-      addLog(`Đang tạo trang viết bài mới trong database "Công việc của Tây"...`, "info");
       contentPage = await notion.pages.create({
         parent: { data_source_id: contentDataSourceId },
         properties: {
@@ -1692,12 +1692,8 @@ app.post("/api/notion/sync", async (req, res) => {
         },
         children: blocks.slice(0, 100)
       });
-
       contentPageId = contentPage.id;
-      addLog(`Đã tạo trang Công việc của Tây thành công (ID: ${contentPageId})`, "success");
-
       if (blocks.length > 100) {
-        addLog(`Đang tiếp tục thêm các block văn bản còn lại vào trang...`, "info");
         for (let i = 100; i < blocks.length; i += 100) {
           await notion.blocks.children.append({
             block_id: contentPageId,
@@ -1706,10 +1702,15 @@ app.post("/api/notion/sync", async (req, res) => {
         }
       }
     } catch (contentErr) {
-      addLog(`Cảnh báo lưu Công việc của Tây (chưa được share quyền): ${contentErr.message}`, "warning");
+      // Non-fatal if "Công việc của Tây" is not shared
     }
 
-    // 2. Create or Update coordination record in "Đăng sản phẩm đơn giản"
+    // Inspect database properties to avoid schema mismatch
+    const targetDb = await notion.databases.retrieve({ database_id: targetCoordinationDbId });
+    const targetDbProps = targetDb.properties || {};
+    const hasRelationProp = Boolean(targetDbProps["Bài content Tây"] && contentPageId);
+    const hasFacebookProp = Boolean(targetDbProps["Facebook"]);
+
     addLog(`Đang tìm trang điều phối cho sản phẩm: "${productName}"...`, "info");
     const existingPage = await findCoordinationPageByTitle(notion, productName, targetCoordinationDbId);
     
@@ -1732,29 +1733,34 @@ app.post("/api/notion/sync", async (req, res) => {
             name: "Content đang làm"
           }
         },
-        ...(siteType === "pharma" ? {} : {
-          "Bài content Tây": {
-            relation: [
-              {
-                id: contentPageId
-              }
-            ]
-          },
-          "Facebook": {
-            select: {
-              name: "Chưa đăng"
-            }
-          }
-        }),
         "Content xong": {
           checkbox: true
-        }
+        },
+        ...(hasRelationProp ? { "Bài content Tây": { relation: [{ id: contentPageId }] } } : {}),
+        ...(hasFacebookProp ? { "Facebook": { select: { name: "Chưa đăng" } } } : {})
       };
       const updatedPage = await notion.pages.update({
         page_id: existingPage.id,
         properties: coordinationUpdateProps
       });
       coordinationPageId = updatedPage.id;
+
+      // Update / replace blocks inside the page body so the article is always present on Notion
+      try {
+        addLog(`Đang lưu nội dung bài viết Markdown vào thân trang Notion...`, "info");
+        const existingBlocks = await notion.blocks.children.list({ block_id: existingPage.id });
+        for (const b of existingBlocks.results) {
+          await notion.blocks.delete({ block_id: b.id }).catch(() => {});
+        }
+        for (let i = 0; i < blocks.length; i += 100) {
+          await notion.blocks.children.append({
+            block_id: existingPage.id,
+            children: blocks.slice(i, i + 100)
+          });
+        }
+      } catch (blockErr) {
+        addLog(`Cảnh báo ghi bài viết vào thân trang: ${blockErr.message}`, "warning");
+      }
     } else {
       addLog(`Không tìm thấy trang sẵn có. Đang tạo trang điều phối mới với trạng thái "Content đang làm"...`, "info");
       const coordinationCreateProps = {
@@ -1780,30 +1786,18 @@ app.post("/api/notion/sync", async (req, res) => {
             name: "Content đang làm"
           }
         },
-        ...(siteType === "pharma" ? {} : {
-          "Bài content Tây": {
-            relation: [
-              {
-                id: contentPageId
-              }
-            ]
-          },
-          "Facebook": {
-            select: {
-              name: "Chưa đăng"
-            }
-          }
-        }),
         "Content xong": {
           checkbox: true
-        }
+        },
+        ...(hasRelationProp ? { "Bài content Tây": { relation: [{ id: contentPageId }] } } : {}),
+        ...(hasFacebookProp ? { "Facebook": { select: { name: "Chưa đăng" } } } : {})
       };
       const createdPage = await notion.pages.create({
-        parent: siteType === "pharma" ? { database_id: targetCoordinationDbId } : { data_source_id: coordinationDataSourceId },
+        parent: { database_id: targetCoordinationDbId },
         properties: coordinationCreateProps,
-        ...(siteType === "pharma" ? { children: blocks.slice(0, 100) } : {})
+        children: blocks.slice(0, 100)
       });
-      if (siteType === "pharma" && blocks.length > 100) {
+      if (blocks.length > 100) {
         for (let i = 100; i < blocks.length; i += 100) {
           await notion.blocks.children.append({
             block_id: createdPage.id,
