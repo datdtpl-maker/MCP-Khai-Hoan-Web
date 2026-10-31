@@ -38,7 +38,7 @@ const {
   checkGeminiApiKey
 } = require("./lib/gemini-api");
 const { listFacebookProductsByStatus, markFacebookProductsAsPublished } = require("./lib/facebook-status");
-const { listNumberedImages, resolveProductImageFolder, resolveTargetProductFolder } = require("./lib/product-image-folder");
+const { listNumberedImages, normalizeProductName, resolveProductImageFolder, resolveTargetProductFolder } = require("./lib/product-image-folder");
 const { getGoogleDriveFileId, downloadGoogleDriveLogo } = require("./lib/logo-image");
 const { createApiClientPool } = require("./lib/api-client-pool");
 const { ensureChatGptComposer, fillChatGptPrompt } = require("./lib/chatgpt-composer");
@@ -1155,6 +1155,7 @@ async function resolveDriveFolderUrl(folderPath, suppliedParentUrl, productName)
 const DERMA_COORDINATION_DATA_SOURCE_ID = "4dcd280a-9505-49fb-9b63-33407108603a";
 // Helper: Query coordination page by title
 async function findCoordinationPageByTitle(notion, productName, coordinationDbId = DERMA_COORDINATION_DATABASE_ID) {
+  // 1. Direct match
   const response = await notion.databases.query({
     database_id: coordinationDbId,
     filter: {
@@ -1167,6 +1168,47 @@ async function findCoordinationPageByTitle(notion, productName, coordinationDbId
   if (response.results && response.results.length > 0) {
     return response.results[0];
   }
+
+  // 2. Dash variant match (- vs –)
+  const altName = productName.includes("–")
+    ? productName.replace(/–/g, "-")
+    : productName.replace(/-/g, "–");
+  if (altName !== productName) {
+    const altResponse = await notion.databases.query({
+      database_id: coordinationDbId,
+      filter: {
+        property: "Tên sản phẩm",
+        title: {
+          equals: altName
+        }
+      }
+    });
+    if (altResponse.results && altResponse.results.length > 0) {
+      return altResponse.results[0];
+    }
+  }
+
+  // 3. Fallback search by first 2 significant words
+  const words = productName.replace(/[\\/:*?"<>|–—-]/g, " ").split(/\s+/).filter(w => w.length > 2);
+  const searchKeyword = words.slice(0, 2).join(" ");
+  if (searchKeyword) {
+    const fuzzyResponse = await notion.databases.query({
+      database_id: coordinationDbId,
+      filter: {
+        property: "Tên sản phẩm",
+        title: {
+          contains: searchKeyword
+        }
+      }
+    });
+    const targetNorm = normalizeProductName(productName);
+    const matched = fuzzyResponse.results.find(p => {
+      const title = p.properties["Tên sản phẩm"]?.title?.[0]?.plain_text || "";
+      return normalizeProductName(title) === targetNorm;
+    });
+    if (matched) return matched;
+  }
+
   return null;
 }
 
@@ -1590,26 +1632,31 @@ app.post("/api/facebook/publish", async (req, res) => {
     if (!record) throw new Error("Không tìm thấy trang điều phối sản phẩm để lưu bài Facebook.");
 
     // Save exactly the content in the editor (including user edits) as a
-    // separate Facebook article page, then link it to the product record.
+    // separate Facebook article page if the database is accessible.
     const contentDataSourceId = "22c70655-a9aa-80f5-a0b5-000b9dfd1d8b";
     const facebookBlocks = markdownToNotionBlocks(content);
-    const facebookContentPage = await notion.pages.create({
-      parent: { data_source_id: contentDataSourceId },
-      properties: {
-        "Tên tài liệu": { title: [{ text: { content: `${productName} FACEBOOK` } }] },
-        "Status": { select: { name: "Hoàn thành" } }
-      },
-      children: facebookBlocks.slice(0, 100)
-    });
+    let facebookContentPage = null;
+    try {
+      facebookContentPage = await notion.pages.create({
+        parent: { data_source_id: contentDataSourceId },
+        properties: {
+          "Tên tài liệu": { title: [{ text: { content: `${productName} FACEBOOK` } }] },
+          "Status": { select: { name: "Hoàn thành" } }
+        },
+        children: facebookBlocks.slice(0, 100)
+      });
 
-    for (let i = 100; i < facebookBlocks.length; i += 100) {
-      await notion.blocks.children.append({ block_id: facebookContentPage.id, children: facebookBlocks.slice(i, i + 100) });
+      for (let i = 100; i < facebookBlocks.length; i += 100) {
+        await notion.blocks.children.append({ block_id: facebookContentPage.id, children: facebookBlocks.slice(i, i + 100) });
+      }
+    } catch (contentErr) {
+      addLog(`Cảnh báo lưu Công việc của Tây (chưa được share quyền): ${contentErr.message}`, "warning");
     }
 
     const fbUpdateProps = {
       Facebook: { select: { name: "Chờ đăng" } }
     };
-    if (record.properties && record.properties["Bài content Tây"]) {
+    if (facebookContentPage && record.properties && record.properties["Bài content Tây"]) {
       const currentRelations = record.properties["Bài content Tây"].relation || [];
       const relatedContent = [...currentRelations, { id: facebookContentPage.id }]
         .filter((relation, index, list) => list.findIndex((item) => item.id === relation.id) === index);
@@ -1621,7 +1668,7 @@ app.post("/api/facebook/publish", async (req, res) => {
     });
     res.json({
       success: true,
-      facebookContentPageUrl: facebookContentPage.url,
+      facebookContentPageUrl: facebookContentPage?.url || record.url,
       message: "Đã đưa nội dung và ảnh vào form Facebook, lưu bài vào Notion và chuyển trạng thái thành Chờ đăng."
     });
   } catch (err) {
