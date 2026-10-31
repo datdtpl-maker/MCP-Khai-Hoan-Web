@@ -1100,7 +1100,7 @@ Thiết kế hiện đại, rõ ràng, dễ đọc trên điện thoại, ngôn 
       const res = await fetch("/api/openai/generate-content", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ productName, details, category, price, driveParent })
+        body: JSON.stringify({ productName, details, category, price, driveParent, siteType: "derma" })
       });
       const data = await res.json();
       if (res.ok) {

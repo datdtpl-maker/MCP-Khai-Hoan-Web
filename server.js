@@ -733,8 +733,14 @@ async function handleGenerateArticleContent(req, res) {
   addLog(`Đang tạo nội dung bài viết bằng mô hình ${model} cho sản phẩm: "${productName}"...`, "info");
 
   try {
+    const isPharma = siteType === "pharma";
+    const brandName = isPharma ? "Khải Hoàn Pharma" : "Khải Hoàn Derma";
+    const contactSentence = isPharma
+      ? "Liên hệ Khải Hoàn Pharma để được dược sĩ tư vấn cách sử dụng [Tên sản phẩm] phù hợp với tình trạng của bạn. (Sử dụng văn bản thường, KHÔNG in đậm, KHÔNG sử dụng ký tự **)"
+      : "Liên hệ Khải Hoàn Derma để được dược sĩ tư vấn cách sử dụng [Tên sản phẩm] phù hợp với tình trạng da và routine hiện tại của bạn. (Sử dụng văn bản thường, KHÔNG in đậm, KHÔNG sử dụng ký tự **)";
+
     const systemPrompt = `
-Bạn là một dược sĩ lâm sàng cao cấp và chuyên gia sáng tạo nội dung cho ${siteType === "pharma" ? "nhà thuốc Khải Hoàn Pharma" : "nhà thuốc Khải Hoàn Skincare"}.
+Bạn là một dược sĩ lâm sàng cao cấp và chuyên gia sáng tạo nội dung cho ${brandName}.
 Nhiệm vụ của bạn là viết một bài viết giới thiệu sản phẩm mới theo phong cách chuyên nghiệp, thực tế, đi thẳng vào vấn đề bệnh lý và công dụng thực tế của hoạt chất, không dùng từ ngữ ẩn dụ hoa mỹ sáo rỗng.
 
 Cấu trúc bài viết bắt buộc phải tuân theo cấu trúc Markdown chính xác sau:
@@ -781,7 +787,7 @@ Danh mục sản phẩm: [Tên danh mục] - Giá: [Giá tiền]
 * [Đối tượng 4]
 
 ## Hướng Dẫn Sử Dụng
-[Đoạn khuyến nghị sử dụng theo dược sĩ Khải Hoàn]
+[Đoạn khuyến nghị sử dụng theo dược sĩ ${brandName}]
 * [Hướng dẫn/Lưu ý/Bước 1]
 * [Hướng dẫn/Lưu ý/Bước 2]
 * [Hướng dẫn/Lưu ý/Bước 3]
@@ -801,7 +807,7 @@ Danh mục sản phẩm: [Tên danh mục] - Giá: [Giá tiền]
 ## Kết Luận
 [Đoạn kết luận ngắn gọn tổng hợp tên sản phẩm, các hoạt chất chính và ứng dụng thực tế. Sử dụng văn bản thường, KHÔNG in đậm, KHÔNG sử dụng ký tự **]
 
-Liên hệ Khải Hoàn Skincare/Nhà thuốc Khải Hoàn để được dược sĩ tư vấn cách sử dụng [Tên sản phẩm] phù hợp với tình trạng da và routine hiện tại của bạn. (Sử dụng văn bản thường, KHÔNG in đậm, KHÔNG sử dụng ký tự **)
+${contactSentence}
 
 Lưu ý: Không thêm bất kỳ văn bản giải thích hoặc định dạng nào khác ngoài cấu trúc Markdown trên. KHÔNG tự ý thêm tiêu đề H1 (#) ở đầu bài viết.
     `.trim();
@@ -1381,7 +1387,7 @@ async function runSingleImageAutomationInBackground(port, refImagePath, logoImag
     const startTime = Date.now();
 
     while (Date.now() - startTime < 300000) {
-      await new Promise((r) => setTimeout(r, 1000));
+      await new Promise((r) => setTimeout(r, 600));
       try {
         const observation = await requestTracker.poll();
         const { candidate, phase, diagnostics } = observation;
