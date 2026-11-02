@@ -724,14 +724,17 @@ Thiết kế hiện đại, rõ ràng, dễ đọc trên điện thoại, ngôn 
       chatGptReady = Boolean(data.ready) && !chromeActionBusy;
       const stateLabels = { verification_required: 'ChatGPT: Chờ xác minh', auth_error: 'ChatGPT: Lỗi đăng nhập', login_required: 'ChatGPT: Chưa đăng nhập', loading: 'ChatGPT: Đang tải', manual: 'Chrome: Đăng nhập thủ công', connection_error: 'Chrome: Lỗi kết nối' };
       btnManualChrome.hidden = !['verification_required', 'auth_error', 'login_required', 'connection_error'].includes(data.state);
+      const manualSaveBtns = document.querySelectorAll(".btn-manual-save, .pharma-btn-manual-save");
       if (data.online) {
         chromeStatusBadge.className = `status-badge ${chatGptReady ? 'online' : 'offline'}`;
         chromeStatusText.textContent = chatGptReady ? 'ChatGPT: Sẵn sàng' : stateLabels[data.state] || 'Chrome: Chưa khóa tab';
         singleGenBtns.forEach(btn => btn.disabled = !chatGptReady || imageGenerationBusy);
+        manualSaveBtns.forEach(btn => btn.disabled = false);
       } else {
         chromeStatusBadge.className = "status-badge offline";
         chromeStatusText.textContent = stateLabels[data.state] || 'Chrome Debug: Offline';
         singleGenBtns.forEach(btn => btn.disabled = true);
+        manualSaveBtns.forEach(btn => btn.disabled = true);
       }
     } catch (err) {
       chatGptReady = false;
@@ -1313,6 +1316,61 @@ Thiết kế hiện đại, rõ ràng, dễ đọc trên điện thoại, ngôn 
         imageGenerationBusy = false;
         btn.textContent = `Sinh ảnh ${index}`;
         btn.setAttribute('aria-busy', 'false');
+        await checkChromeStatus();
+      }
+    });
+  });
+
+  // Setup manual save buttons (Derma)
+  document.querySelectorAll(".btn-manual-save").forEach(btn => {
+    btn.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      const index = btn.getAttribute("data-index");
+      const productName = prodNameInput.value.trim();
+      const driveParent = driveParentInput.value.trim();
+
+      if (!productName) {
+        alert("Vui lòng điền Tên sản phẩm trước khi lưu ảnh.");
+        return;
+      }
+      if (!driveParent) {
+        alert("Vui lòng chọn Thư mục Google Drive.");
+        return;
+      }
+
+      const originalText = btn.textContent;
+      btn.textContent = `Đang lưu...`;
+      btn.disabled = true;
+      appendLocalLog(`[Thủ công] Đang lưu ảnh ${index}.png từ tab ChatGPT vào thư mục sản phẩm...`, "info");
+
+      try {
+        const res = await fetch("/api/chrome/save-manual-image", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            productName,
+            driveParent,
+            promptIndex: index,
+            siteType: "derma"
+          })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          appendLocalLog(`✓ ${data.message}`, "success");
+          showCompletionPopup({
+            title: `Đã lưu thủ công ảnh ${index}`,
+            returnFocus: document.getElementById(`prompt-header-${index}`),
+            message: `Ảnh đã được lưu tại: ${data.imagePath}. Bạn có thể chọn prompt tiếp theo.`
+          });
+        } else {
+          throw new Error(data.error || `Lỗi khi lưu ảnh ${index}`);
+        }
+      } catch (err) {
+        appendLocalLog(`[Thủ công] Lỗi lưu ảnh ${index}: ${err.message}`, "error");
+        alert(`Lỗi lưu thủ công: ${err.message}`);
+      } finally {
+        btn.textContent = originalText;
+        btn.disabled = false;
         await checkChromeStatus();
       }
     });
@@ -2296,6 +2354,62 @@ Thiết kế hiện đại, rõ ràng, dễ đọc trên điện thoại, ngôn 
     const header = document.getElementById(`pharma-prompt-header-${i}`);
     const contentBox = document.getElementById(`pharma-prompt-content-${i}`);
     const btnGen = document.getElementById(`pharma-btn-generate-single-${i}`);
+
+    // Setup manual save button for Pharma
+    const btnManual = document.getElementById(`pharma-btn-manual-save-${i}`);
+    if (btnManual) {
+      btnManual.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        const productName = (pharmaProdNameInput ? pharmaProdNameInput.value.trim() : "");
+        const driveParent = (pharmaDriveParentInput ? pharmaDriveParentInput.value.trim() : "");
+
+        if (!productName) {
+          alert("Vui lòng điền Tên sản phẩm trước khi lưu ảnh.");
+          return;
+        }
+        if (!driveParent) {
+          alert("Vui lòng chọn Thư mục Google Drive.");
+          return;
+        }
+
+        const originalText = btnManual.textContent;
+        btnManual.textContent = `Đang lưu...`;
+        btnManual.disabled = true;
+        appendLocalLog(`[Pharma Thủ công] Đang lưu ảnh ${i}.png từ tab ChatGPT vào thư mục sản phẩm...`, "info");
+
+        try {
+          const res = await fetch("/api/chrome/save-manual-image", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              productName,
+              driveParent,
+              promptIndex: String(i),
+              siteType: "pharma"
+            })
+          });
+          const data = await res.json();
+          if (res.ok) {
+            appendLocalLog(`✓ ${data.message}`, "success");
+            showCompletionPopup({
+              title: `Đã lưu thủ công ảnh Pharma ${i}`,
+              returnFocus: document.getElementById(`pharma-prompt-header-${i}`),
+              message: `Ảnh đã được lưu tại: ${data.imagePath}. Bạn có thể chọn prompt tiếp theo.`
+            });
+          } else {
+            throw new Error(data.error || `Lỗi khi lưu ảnh Pharma ${i}`);
+          }
+        } catch (err) {
+          appendLocalLog(`[Pharma Thủ công] Lỗi lưu ảnh ${i}: ${err.message}`, "error");
+          alert(`Lỗi lưu thủ công: ${err.message}`);
+        } finally {
+          btnManual.textContent = originalText;
+          btnManual.disabled = false;
+          await checkChromeStatus();
+        }
+      });
+    }
+
     const btnExpand = document.querySelector(`.pharma-btn-toggle-expand-prompt[data-pharma-index="${i}"]`);
     const btnReset = document.querySelector(`.pharma-btn-reset-prompt[data-pharma-index="${i}"]`);
     const btnSave = document.querySelector(`.pharma-btn-save-prompt[data-pharma-index="${i}"]`);

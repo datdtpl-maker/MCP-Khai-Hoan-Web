@@ -1510,6 +1510,140 @@ async function runSingleImageAutomationInBackground(port, refImagePath, logoImag
   }
 }
 
+
+// Manual save current image from active ChatGPT tab
+app.post("/api/chrome/save-manual-image", async (req, res) => {
+  const { productName, driveParent, promptIndex, siteType = "derma" } = req.body;
+  if (!productName) return res.status(400).json({ error: "Thiếu tên sản phẩm." });
+  if (!driveParent) return res.status(400).json({ error: "Thiếu thư mục Google Drive." });
+  const index = Number(promptIndex);
+  if (!Number.isInteger(index) || index < 1 || index > 4) {
+    return res.status(400).json({ error: "Số thứ tự ảnh phải từ 1 đến 4." });
+  }
+
+  const targetFolder = path.join(driveParent, productName.replace(/[\\/:*?"<>|]/g, ""));
+  await fs.mkdir(targetFolder, { recursive: true });
+  const imagePath = path.join(targetFolder, `${index}.png`);
+
+  addLog(`[Ảnh ${index}] Bắt đầu lưu thủ công từ tab ChatGPT vào: ${index}.png...`, "info");
+
+  const config = await loadConfig();
+  const port = config.chromeDebugPort || 9222;
+
+  let browser;
+  try {
+    const bound = await connectBoundChatGpt(chromium, port, managedChatSession);
+    browser = bound.browser;
+    const page = bound.page || browser.contexts()[0]?.pages().find(p => p.url().includes('chatgpt.com'));
+    if (!page) throw new Error("Không tìm thấy tab ChatGPT đang mở.");
+
+    const imageInfo = await page.evaluate(async () => {
+      const isVisible = el => {
+        const s = getComputedStyle(el);
+        return s.visibility !== 'hidden' && s.display !== 'none' && Boolean(el.getClientRects().length);
+      };
+
+      const isExcluded = el => Boolean(el.closest('form, [contenteditable="true"], nav, aside, header, footer, [data-message-author-role="user"], [data-turn="user"], [data-user-message-bubble], .attachments, [data-testid="user-attachment"]'));
+
+      const allImgs = [...document.images].filter(img => {
+        if (!isVisible(img) || isExcluded(img)) return false;
+        const w = img.naturalWidth || img.width || 0;
+        const h = img.naturalHeight || img.height || 0;
+        const src = img.currentSrc || img.src || '';
+        return img.complete && w >= 256 && h >= 256 && src && !src.startsWith('data:image/svg');
+      });
+
+      if (!allImgs.length) return null;
+
+      const targetImg = allImgs[allImgs.length - 1];
+      const canvas = document.createElement('canvas');
+      canvas.width = targetImg.naturalWidth || targetImg.width;
+      canvas.height = targetImg.naturalHeight || targetImg.height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(targetImg, 0, 0);
+
+      let dataUrl = null;
+      try {
+        dataUrl = canvas.toDataURL('image/png');
+      } catch (err) {
+        const res = await fetch(targetImg.currentSrc || targetImg.src);
+        const blob = await res.blob();
+        dataUrl = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+      }
+
+      return {
+        dataUrl,
+        src: targetImg.currentSrc || targetImg.src,
+        width: canvas.width,
+        height: canvas.height
+      };
+    });
+
+    if (!imageInfo || !imageInfo.dataUrl) {
+      throw new Error("Không tìm thấy ảnh kết quả hợp lệ trên tab ChatGPT. Hãy đảm bảo ChatGPT đã tạo xong ảnh.");
+    }
+
+    const base64Data = imageInfo.dataUrl.replace(/^data:image\/\w+;base64,/, "");
+    const bytes = Buffer.from(base64Data, 'base64');
+    if (bytes.length < 1024) throw new Error("Dữ liệu ảnh nhận được quá nhỏ hoặc bị lỗi.");
+
+    const tempPath = `${imagePath}.part`;
+    await fs.writeFile(tempPath, bytes);
+    await fs.rename(tempPath, imagePath);
+
+    addLog(`[Ảnh ${index}] ✓ Đã lưu thủ công thành công: ${index}.png (${imageInfo.width}x${imageInfo.height}) tại ${targetFolder}`, "success");
+
+    if (imageJob.status === 'running' && imageJob.current === index) {
+      imageJob.status = 'completed';
+      imageJob.completed = [index];
+      imageJob.savedPath = imagePath;
+    }
+
+    const completedIndexes = await getCompletedPromptImageIndexes(targetFolder);
+    addLog(`[Ảnh ${index}] Thư mục hiện có ${completedIndexes.length}/4 ảnh: ${completedIndexes.map(i => i + '.png').join(', ')}`, "info");
+
+    if (completedIndexes.length >= 4) {
+      try {
+        const driveUrl = await resolveDriveFolderUrl(targetFolder, null, productName);
+        const targetCoordinationDbId = siteType === "pharma" ? PHARMA_COORDINATION_DATABASE_ID : DERMA_COORDINATION_DATABASE_ID;
+        const notion = await getNotionClient();
+        const mediaProperty = driveUrl ? { "Media sản phẩm": { url: driveUrl } } : {};
+        const existingPage = await findCoordinationPageByTitle(notion, productName, targetCoordinationDbId);
+        if (existingPage) {
+          await notion.pages.update({
+            page_id: existingPage.id,
+            properties: {
+              ...mediaProperty,
+              "Trạng thái": { select: { name: "Content đang làm" } },
+              "Content xong": { checkbox: false }
+            }
+          });
+          addLog(`[Ảnh ${index}] Đã đồng bộ 4/4 ảnh lên Notion ("Content đang làm")!`, "success");
+        }
+      } catch (notionErr) {
+        addLog(`[Ảnh ${index}] Cảnh báo đồng bộ Notion: ${notionErr.message}`, "warning");
+      }
+    }
+
+    res.json({
+      success: true,
+      imagePath,
+      completedCount: completedIndexes.length,
+      message: `Đã lưu thủ công ảnh ${index}.png thành công!`
+    });
+  } catch (err) {
+    addLog(`[Ảnh ${index}] Lỗi lưu thủ công: ${err.message}`, "error");
+    res.status(500).json({ error: err.message });
+  } finally {
+    if (browser) await browser.close();
+  }
+});
+
 app.post("/api/facebook/start", async (req, res) => {
   try {
     const config = await loadConfig();
@@ -1656,7 +1790,7 @@ app.post("/api/facebook/publish", async (req, res) => {
         await notion.blocks.children.append({ block_id: facebookContentPage.id, children: facebookBlocks.slice(i, i + 100) });
       }
     } catch (contentErr) {
-      addLog(`Cảnh báo lưu Công việc của Tây (chưa được share quyền): ${contentErr.message}`, "warning");
+      // Bỏ qua cảnh báo nếu cơ sở dữ liệu phụ này chưa được share quyền
     }
 
     const fbUpdateProps = {
