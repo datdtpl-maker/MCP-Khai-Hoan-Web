@@ -1443,6 +1443,10 @@ async function runSingleImageAutomationInBackground(port, refImagePath, logoImag
       // 5. Only after all four generated images exist, update Notion to
       // "Content đang làm". The manual Push to Notion action also keeps this
       // status while checking "Content xong", so Content can revise the images.
+      if (process.env.NODE_ENV === 'test' || (typeof productName === 'string' && productName.toLowerCase().startsWith('test'))) {
+        addLog(`[Ảnh ${promptIndex}] Bỏ qua đồng bộ Notion cho môi trường test / sản phẩm kiểm thử (${productName}).`, 'info');
+        return path.join(targetFolder, `${promptIndex}.png`);
+      }
       try {
         const targetCoordinationDbId = siteType === "pharma" ? PHARMA_COORDINATION_DATABASE_ID : DERMA_COORDINATION_DATABASE_ID;
         const coordinationDbId = targetCoordinationDbId;
@@ -1623,6 +1627,9 @@ app.post("/api/chrome/save-manual-image", async (req, res) => {
     addLog(`[Ảnh ${index}] Thư mục hiện có ${completedIndexes.length}/4 ảnh: ${completedIndexes.map(i => i + '.png').join(', ')}`, "info");
 
     if (completedIndexes.length >= 4) {
+      if (process.env.NODE_ENV === 'test' || (typeof productName === 'string' && productName.toLowerCase().startsWith('test'))) {
+        addLog(`[Ảnh ${index}] Bỏ qua đồng bộ Notion cho môi trường test / sản phẩm kiểm thử (${productName}).`, 'info');
+      } else {
       try {
         const driveUrl = await resolveDriveFolderUrl(targetFolder, null, productName);
         const targetCoordinationDbId = siteType === "pharma" ? PHARMA_COORDINATION_DATABASE_ID : DERMA_COORDINATION_DATABASE_ID;
@@ -1642,6 +1649,7 @@ app.post("/api/chrome/save-manual-image", async (req, res) => {
         }
       } catch (notionErr) {
         addLog(`[Ảnh ${index}] Cảnh báo đồng bộ Notion: ${notionErr.message}`, "warning");
+      }
       }
     }
 

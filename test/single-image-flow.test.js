@@ -105,7 +105,7 @@ test(`single-image API saves the correct numbered result (${layout} layout) and 
   });
   child = spawn(process.execPath, ['server.js'], {
     cwd: path.resolve(__dirname, '..'),
-    env: { ...process.env, PORT: String(port), NPC_CONFIG_DIR: path.join(root, 'config'), NPC_DISABLE_AUTO_LAUNCH: '1' },
+    env: { ...process.env, PORT: String(port), NPC_CONFIG_DIR: path.join(root, 'config'), NPC_DISABLE_AUTO_LAUNCH: '1', NODE_ENV: 'test' },
     stdio: 'ignore', windowsHide: true
   });
   const base = `http://127.0.0.1:${port}`;
