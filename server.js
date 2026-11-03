@@ -1584,12 +1584,27 @@ app.post("/api/chrome/save-manual-image", async (req, res) => {
       };
     });
 
-    if (!imageInfo || !imageInfo.dataUrl) {
-      throw new Error("Không tìm thấy ảnh kết quả hợp lệ trên tab ChatGPT. Hãy đảm bảo ChatGPT đã tạo xong ảnh.");
+    let bytes = null;
+    if (imageInfo && imageInfo.dataUrl) {
+      const base64Data = imageInfo.dataUrl.replace(/^data:image\/\w+;base64,/, "");
+      bytes = Buffer.from(base64Data, 'base64');
     }
 
-    const base64Data = imageInfo.dataUrl.replace(/^data:image\/\w+;base64,/, "");
-    const bytes = Buffer.from(base64Data, 'base64');
+    // Tầng 3: Playwright element screenshot fallback nếu canvas và fetch bị chặn
+    if (!bytes || bytes.length < 1024) {
+      try {
+        const lastImgLocator = page.locator('main img, [role="main"] img').filter({ hasNot: page.locator('.attachment, .attachments, [data-user-message-bubble]') }).last;
+        const scr = await lastImgLocator.screenshot({ type: 'png' });
+        if (scr && scr.length >= 1024) {
+          bytes = scr;
+          addLog(`[Ảnh ${index}] Đã trích xuất qua tầng 3 (Playwright Screenshot).`, "info");
+        }
+      } catch (scrErr) {}
+    }
+
+    if (!bytes || bytes.length < 1024) {
+      throw new Error("Không tìm thấy ảnh kết quả hợp lệ trên tab ChatGPT. Hãy đảm bảo ChatGPT đã tạo xong ảnh.");
+    }
     if (bytes.length < 1024) throw new Error("Dữ liệu ảnh nhận được quá nhỏ hoặc bị lỗi.");
 
     const tempPath = `${imagePath}.part`;
