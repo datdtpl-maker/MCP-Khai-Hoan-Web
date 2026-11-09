@@ -1301,6 +1301,142 @@ app.post("/api/chrome/generate-single-image", async (req, res) => {
   }
 });
 
+// Automatic DOM Fallback: Directly extract and save newly completed generated image
+async function attemptDirectDomImageSave(page, context, baselineImageUrls, targetFolder, promptIndex, refImagePath, logoImagePath) {
+  try {
+    const domCheck = await page.evaluate(async (baselineList) => {
+      // 1. Kiểm tra tiến trình sinh ảnh còn đang chạy hay không
+      const isGenerating = Array.from(document.querySelectorAll('button, [role="button"]')).some(btn => {
+        const label = (btn.getAttribute('aria-label') || btn.getAttribute('title') || btn.textContent || '').trim().toLowerCase();
+        const testId = btn.getAttribute('data-testid');
+        return testId === 'stop-button' || /^(stop|dừng)/i.test(label);
+      });
+      const isBusy = Boolean(document.querySelector('[aria-busy="true"], [role="progressbar"]'));
+      if (isGenerating || isBusy) return { status: 'generating' };
+
+      // Kiểm tra các dòng text trạng thái tạo ảnh
+      const hasLoadingIndicator = Array.from(document.querySelectorAll('div, span, p')).some(el => {
+        const s = getComputedStyle(el);
+        if (s.visibility === 'hidden' || s.display === 'none' || !el.getClientRects().length) return false;
+        const text = (el.textContent || '').trim();
+        return /^(?:(?:creating|generating|rendering|processing) (?:an? )?image|đang (?:tạo|xử lý|tải) (?:hình )?ảnh)(?:\s*\d{1,3}%|[.\s…])*$/i.test(text);
+      });
+      if (hasLoadingIndicator) return { status: 'generating' };
+
+      // 2. Tìm tất cả ảnh kết quả hợp lệ
+      const isVisible = el => {
+        const s = getComputedStyle(el);
+        return s.visibility !== 'hidden' && s.display !== 'none' && Boolean(el.getClientRects().length);
+      };
+      const isExcluded = el => Boolean(el.closest('form, [contenteditable="true"], nav, aside, header, footer, [data-message-author-role="user"], [data-turn="user"], [data-user-message-bubble], .attachments, .attachment, [data-testid="user-attachment"]'));
+
+      const baselineSet = new Set(baselineList || []);
+      const eligibleImages = Array.from(document.images).filter(img => {
+        if (!isVisible(img) || isExcluded(img)) return false;
+        const w = img.naturalWidth || img.width || 0;
+        const h = img.naturalHeight || img.height || 0;
+        const src = img.currentSrc || img.src || '';
+        if (!src || src.startsWith('data:image/svg')) return false;
+        if (!img.complete || w < 256 || h < 256) return false;
+        if (baselineSet.has(src)) return false;
+        return true;
+      });
+
+      if (eligibleImages.length === 0) return { status: 'waiting' };
+
+      const targetImg = eligibleImages[eligibleImages.length - 1];
+
+      // 3. Kiểm tra Card hoàn tất (phải có nút thao tác hoặc src CDN OpenAI)
+      let hasProof = (targetImg.currentSrc || targetImg.src || '').includes('files.oaiusercontent.com');
+      if (!hasProof) {
+        for (let card = targetImg.parentElement, d = 0; card && d < 8; card = card.parentElement, d++) {
+          if (card.matches('main, body, [data-message-author-role="user"], [data-turn="user"]')) break;
+          const buttons = Array.from(card.querySelectorAll('button, [role="button"], a[download]'));
+          const labels = buttons.flatMap(b => [(b.getAttribute('aria-label') || ''), (b.getAttribute('title') || ''), (b.textContent || '')]).filter(Boolean);
+          if (labels.some(l => /edit|chỉnh sửa|download|tải|share|chia sẻ|sao chép|copy/i.test(l))) {
+            hasProof = true;
+            break;
+          }
+        }
+      }
+
+      if (!hasProof) return { status: 'rendering' };
+
+      // 4. Trích xuất ảnh qua Tầng 1 (Canvas) hoặc Tầng 2 (Fetch Blob)
+      let dataUrl = null;
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = targetImg.naturalWidth || targetImg.width;
+        canvas.height = targetImg.naturalHeight || targetImg.height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(targetImg, 0, 0);
+        dataUrl = canvas.toDataURL('image/png');
+      } catch (canvasErr) {
+        try {
+          const resp = await fetch(targetImg.currentSrc || targetImg.src, { credentials: 'include' });
+          if (resp.ok) {
+            const blob = await resp.blob();
+            dataUrl = await new Promise((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result);
+              reader.onerror = reject;
+              reader.readAsDataURL(blob);
+            });
+          }
+        } catch (fetchErr) {}
+      }
+
+      return {
+        status: 'ready',
+        dataUrl,
+        src: targetImg.currentSrc || targetImg.src,
+        width: targetImg.naturalWidth || targetImg.width,
+        height: targetImg.naturalHeight || targetImg.height
+      };
+    }, baselineImageUrls).catch(() => null);
+
+    if (domCheck?.status !== 'ready') return null;
+
+    let bytes = null;
+    if (domCheck.dataUrl && domCheck.dataUrl.includes('base64,')) {
+      bytes = Buffer.from(domCheck.dataUrl.split('base64,')[1], 'base64');
+    }
+
+    // Tầng 3: Playwright element screenshot nếu canvas/fetch bị rỗng
+    if (!bytes || bytes.length < 1024) {
+      try {
+        const locator = page.locator(`img[src="${domCheck.src}"]`).last;
+        bytes = await locator.screenshot({ type: 'png' });
+      } catch {}
+    }
+
+    if (!bytes || bytes.length < 1024) return null;
+
+    // Kiểm tra magic byte PNG
+    if (bytes.length >= 8 && bytes.subarray(0, 8).toString('hex') !== '89504e470d0a1a0a') {
+      return null;
+    }
+
+    const imagePath = path.join(targetFolder, `${promptIndex}.png`);
+    const temporaryPath = `${imagePath}.part`;
+
+    await fs.writeFile(temporaryPath, bytes);
+    if (await filesAreIdentical(refImagePath, temporaryPath) || await filesAreIdentical(logoImagePath, temporaryPath)) {
+      await fs.unlink(temporaryPath).catch(() => {});
+      return null;
+    }
+    await fs.rename(temporaryPath, imagePath);
+
+    return {
+      savedPath: imagePath,
+      width: domCheck.width,
+      height: domCheck.height
+    };
+  } catch (err) {
+    return null;
+  }
+}
+
 // Run single image Playwright automation in background
 async function runSingleImageAutomationInBackground(port, refImagePath, logoImagePath, promptText, promptIndex, targetFolder, productName, driveUrl, details, content, siteType = "derma") {
   addLog(`[Ảnh ${promptIndex}] Đang kết nối đến Chrome Debugging Port ${port}...`, "info");
@@ -1354,6 +1490,13 @@ async function runSingleImageAutomationInBackground(port, refImagePath, logoImag
       if (Number(promptIndex) > 1) promptProcessed += '\n\nDùng lại logo brand_logo đã đính kèm ở prompt 1 trong cùng cuộc trò chuyện.';
       promptProcessed += "\n\nYêu cầu logo bắt buộc: file brand_logo đính kèm là logo thương hiệu chính thức. Đặt logo trong vùng phía trên bên phải nhưng dịch vào bên trái: mép phải của logo cách mép phải ảnh khoảng 7-9% chiều rộng, mép trên cách mép trên ảnh khoảng 5-7% chiều cao; chiều rộng logo khoảng 12-15% chiều rộng ảnh. Luôn chừa một vùng trống riêng cho logo. Tuyệt đối không để logo chồng lên tiêu đề, chữ, thông tin, biểu tượng quan trọng hoặc sản phẩm. Nếu vùng đặt logo đang có chữ, phải sắp xếp chữ sang trái hoặc xuống dưới để logo và toàn bộ nội dung đều dễ đọc. Giữ nguyên hình dạng, chữ, màu sắc và tỷ lệ của logo; không vẽ lại, không đổi chữ, không biến dạng và không tạo thêm logo khác.";
     }
+
+    let baselineImageUrls = [];
+    try {
+      baselineImageUrls = await page.evaluate(() => {
+        return [...document.images].map(img => img.currentSrc || img.src).filter(Boolean);
+      });
+    } catch {}
 
     const requestTracker = await createImageRequestTracker(page, promptProcessed);
     await fillChatGptPrompt(editor, promptProcessed);
@@ -1428,6 +1571,18 @@ async function runSingleImageAutomationInBackground(port, refImagePath, logoImag
         if (err.code === 'CHATGPT_REQUEST_MISMATCH') throw err;
         lastReadError = err.message;
         addLog(`[Ảnh ${promptIndex}] Không thể kiểm tra ảnh mới: ${err.message}`, "warning");
+      }
+
+      // TỰ ĐỘNG BẮT DOM KẾT QUẢ KHI CHATGPT ĐÃ SINH XONG 100% (DOM Fallback)
+      if (!foundImage && Date.now() - startTime >= 1500) {
+        try {
+          const domSaved = await attemptDirectDomImageSave(page, context, baselineImageUrls, targetFolder, promptIndex, refImagePath, logoImagePath);
+          if (domSaved) {
+            addLog(`[Ảnh ${promptIndex}] Đã tự động bắt DOM kết quả hoàn chỉnh và lưu thành công ${promptIndex}.png (${domSaved.width}x${domSaved.height})!`, "success");
+            foundImage = true;
+            break;
+          }
+        } catch (domErr) {}
       }
     }
 
